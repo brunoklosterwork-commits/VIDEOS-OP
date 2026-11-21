@@ -39,21 +39,21 @@ export function subtitulos(tiempos) {
 }
 
 export function dibujarSub(ctx, subs, t, resaltar = []) {
+  // Sin píldora: texto tinta con halo blanco, para que la maqueta se vea a través.
   const s = subs.find(([a, b], i) => t >= a && t < (subs[i + 1] ? Math.min(subs[i + 1][0], b + 0.6) : b + 0.6));
   if (!s) return;
   const pop = easeOut(k(t, s[0], 0.12));
-  ctx.save(); ctx.font = '700 60px "DM Sans"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const w = ctx.measureText(s[2]).width + 76, x = (W - w) / 2, y = SUB_Y - 48;
-  ctx.translate(W / 2, y + 48); ctx.scale(0.9 + 0.1 * pop, 0.9 + 0.1 * pop); ctx.translate(-W / 2, -(y + 48));
+  ctx.save(); ctx.font = '800 66px "DM Sans"'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+  const w = ctx.measureText(s[2]).width, x0 = (W - w) / 2, y = SUB_Y;
+  ctx.translate(W / 2, y); ctx.scale(0.92 + 0.08 * pop, 0.92 + 0.08 * pop); ctx.translate(-W / 2, -y);
   ctx.globalAlpha = pop;
-  redondeado(ctx, x, y, w, 96, 48); ctx.fillStyle = 'rgba(27,34,51,0.93)'; ctx.fill();
-  // palabras clave en azul claro
-  const pal = s[2].split(' '); let cx = x + 38;
-  ctx.textAlign = 'left';
-  for (const p of pal) {
-    ctx.fillStyle = resaltar.some(r => p.includes(r)) ? rgb(PAL.acentoClaro) : '#fff';
-    ctx.fillText(p, cx, y + 50); cx += ctx.measureText(p + ' ').width;
-  }
+  const pal = s[2].split(' ');
+  const dib = (fn) => { let cx = x0; for (const p of pal) { fn(p, cx); cx += ctx.measureText(p + ' ').width; } };
+  ctx.shadowColor = 'rgba(255,255,255,0.95)'; ctx.shadowBlur = 28;
+  ctx.strokeStyle = 'rgba(255,255,255,0.92)'; ctx.lineWidth = 16;
+  dib((p, cx) => ctx.strokeText(p, cx, y));
+  ctx.shadowBlur = 0;
+  dib((p, cx) => { ctx.fillStyle = resaltar.some(r => p.includes(r)) ? rgb(PAL.acento) : PAL.tinta; ctx.fillText(p, cx, y); });
   ctx.restore();
 }
 

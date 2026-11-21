@@ -15,7 +15,10 @@ El mundo es una **maqueta de arcilla blanca** vista en isométrico. Todo es blan
 - **Cámara**: isométrica fija; los movimientos son de la maqueta (piezas que suben, puertas que abren, caminos que se dibujan).
 - **UI flotante**: tarjetas blancas redondeadas con sombra suave (cronómetros, precios, medidas, checklist).
 - **Tipografía**: DM Sans. Titular 800, tinta #1B2233; dato clave en azul.
-- **Subtítulos**: píldora oscura centrada **sobre la línea del tercio inferior** (y = 1280 de 1920), 3–4 palabras, minúscula. Nunca pegados al borde inferior. Tarjetas y datos van por encima o por debajo de esa franja, nunca encima del subtítulo.
+- **Subtítulos**: texto tinta 800 con halo blanco suave (sin píldora, para que la maqueta se vea), centrado **sobre la línea del tercio inferior** (y = 1280 de 1920), 3–4 palabras, minúscula. Nunca pegados al borde inferior. Tarjetas y datos van por encima o por debajo de esa franja, nunca encima del subtítulo.
+
+- **Composición**: lo importante de cada toma va por encima del tercio inferior; debajo solo piso de la maqueta y tarjetas.
+- **SFX**: pocos y suaves, ~10 dB bajo la voz (`--sfx-gain 0.3`): `tok` cuando una pieza se apoya, `pop` en tildes/cotas, whoosh corto en cada corte, `chime` solo en el dato final.
 
 ## Pendiente
 - Logo y color real de OP.

@@ -21,7 +21,7 @@ async function init() {
 
 // ---------- tomas ----------
 function tomaA_B(t) { // pared con hueco: la estándar no entra / la de OP se hace a medida
-  const e = new Escena(ctx, { escala: 150, ox: 470, oy: 1020 });
+  const e = new Escena(ctx, { escala: 145, ox: 470, oy: 950 });
   e.caja(-3, -2, -0.4, 11, 9, 0.4, { suelo: true });
   const crece = rebote(k(t, F(2) + 0.25, 0.9));
   const hp = 3.0 * easeOut(k(t, 0, 0.5)); // la pared sube al empezar
@@ -56,7 +56,7 @@ function tomaA_B(t) { // pared con hueco: la estándar no entra / la de OP se ha
 
 function tomaC(t) { // de taller a casa, checklist
   const t0 = F(4);
-  const e = new Escena(ctx, { escala: 60, ox: 430, oy: 880 });
+  const e = new Escena(ctx, { escala: 56, ox: 420, oy: 740 });
   e.caja(-2, -2, -0.4, 16, 15, 0.4, { suelo: true });
   e.caja(-2, 8.6, 0, 16, 1.2, 0.05, { suelo: true });
   const s1 = easeOut(k(t, t0, 0.5)), s2 = easeOut(k(t, t0 + 0.15, 0.5));
@@ -104,7 +104,7 @@ function enRuta(R, p) {
 
 function tomaD(t) { // instalación en 15 minutos
   const t0 = F(6), fin = E(6);
-  const e = new Escena(ctx, { escala: 80, ox: 520, oy: 860 });
+  const e = new Escena(ctx, { escala: 80, ox: 520, oy: 780 });
   e.caja(-2, -2, -0.5, 12, 11, 0.5, { suelo: true });
   e.caja(0, 0, 0, 7, 6, 0.15, { suelo: true });
   const HW = 3.1, Tt = 0.28, s = easeOut(k(t, t0, 0.45));
@@ -141,7 +141,7 @@ function tomaD(t) { // instalación en 15 minutos
 
 function tomaE(t) { // cierre: presupuesto + descuento
   const t0 = F(7);
-  const e = new Escena(ctx, { escala: 120, ox: 540, oy: 1000 });
+  const e = new Escena(ctx, { escala: 120, ox: 540, oy: 860 });
   e.caja(-4, -4, -0.4, 10, 10, 0.4, { suelo: true });
   const s = easeOut(k(t, t0, 0.4));
   e.caja(-0.9, -0.9, 0, 1.8, 1.8, 0.25 * s, { suelo: true });

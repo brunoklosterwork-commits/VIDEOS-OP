@@ -90,3 +90,23 @@ class Pista:
         m = self.f + self.a * duck; m = m / max(1e-9, np.abs(m).max()) * 0.7
         with wave.open(path, 'wb') as w:
             w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((np.clip(m, -1, 1) * 32767).astype(np.int16).tobytes())
+
+
+# --- agregados para OP (maqueta blanca): sonidos suaves, "de estudio" ---
+def tok(tono=1.0):
+    """Golpecito seco de pieza que se apoya (arcilla / madera liviana)."""
+    d = 0.18; t = t_(d)
+    cuerpo = np.sin(2 * np.pi * 180 * tono * t) * np.exp(-t / 0.035)
+    golpe = lp(noise(d), 2500 * tono) * np.exp(-t / 0.012)
+    s = cuerpo * 0.8 + golpe * 0.6
+    return s / np.abs(s).max()
+def pop(tono=1.0):
+    """Pop corto y redondo para tarjetas y tildes."""
+    d = 0.12; t = t_(d); f = 520 * tono + 380 * tono * np.exp(-t / 0.02)
+    s = np.sin(2 * np.pi * np.cumsum(f) / SR) * np.exp(-t / 0.03)
+    return s / np.abs(s).max()
+def chime():
+    """Campanita limpia (dos notas) para un momento clave."""
+    a = bell([1318, 2637, 3951], 1.0, 0.25); b = bell([1760, 3520, 5274], 1.0, 0.3)
+    o = int(0.09 * SR); out = np.zeros(o + len(b)); out[:len(a)] += a * 0.7; out[o:] += b
+    return out / np.abs(out).max()
