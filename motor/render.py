@@ -28,8 +28,9 @@ RAIZ = Path(__file__).resolve().parent.parent  # raíz del repo
 def servidor():
     """Sirve el repo por HTTP local (los módulos ES no cargan desde file://)."""
     import functools, http.server, threading
-    h = functools.partial(http.server.SimpleHTTPRequestHandler, directory=str(RAIZ))
-    h.log_message = lambda *a: None
+    class Silencioso(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *a): pass
+    h = functools.partial(Silencioso, directory=str(RAIZ))
     srv = http.server.ThreadingHTTPServer(('127.0.0.1', 0), h)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv.server_address[1]

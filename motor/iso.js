@@ -49,13 +49,20 @@ export class Escena {
     const suelos = this.items.filter(i => i.suelo).sort((a, b) => a.z1 - b.z1 || a.prof - b.prof);
     for (const it of suelos) this._prisma(it);
     this.items = this.items.filter(i => !i.suelo);
-    // 1) sombras difusas (todas juntas, debajo)
-    ctx.save();
-    ctx.filter = `blur(${this.s * 0.35}px)`;
+    // 1) sombras difusas: se dibujan a 1/4 de resolución y se escalan (rápido)
+    const W = ctx.canvas.width, Hh = ctx.canvas.height, Q = 4;
+    if (!Escena._off || Escena._off.width !== W / Q) Escena._off = new OffscreenCanvas(W / Q, Hh / Q);
+    const off = Escena._off, oc = off.getContext('2d');
+    oc.setTransform(1, 0, 0, 1, 0, 0); oc.clearRect(0, 0, off.width, off.height);
+    const real = this.ctx; this.ctx = oc;
+    oc.setTransform(1 / Q, 0, 0, 1 / Q, 0, 0);
+    oc.filter = `blur(${this.s * 0.35 / Q}px)`;
     for (const it of this.items) if (it.sombra) this._sombra(it, 0.16, 0.9);
-    ctx.filter = `blur(${this.s * 0.08}px)`;
+    oc.filter = `blur(${this.s * 0.08 / Q}px)`;
     for (const it of this.items) if (it.sombra) this._sombra(it, 0.22, 0.25); // contacto
-    ctx.restore();
+    oc.filter = 'none'; this.ctx = real;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(off, 0, 0, W, Hh); ctx.restore();
     if (extra) extra(ctx);
     // 2) sólidos por profundidad
     this.items.sort((a, b) => a.prof - b.prof);
