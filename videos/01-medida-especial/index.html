@@ -49,7 +49,7 @@ function tomaA_B(t) { // pared con hueco: la estándar no entra / la de OP se ha
   }
   // cotas (escena B)
   cota(ctx, e.p(2.95, 0.3, 0), e.p(2.95, 0.3, 2.5), '2,50 m', ease(k(t, F(3) + 0.1, 0.7)), 'der');
-  cota(ctx, e.p(1.6, 0.9, 0), e.p(2.6, 0.9, 0), '1 m', ease(k(t, F(3) + (E(3) - F(3)) * 0.6, 0.6)), 'izq');
+  cota(ctx, e.p(1.6, 0.3, 2.85), e.p(2.6, 0.3, 2.85), '1 m', ease(k(t, F(3) + (E(3) - F(3)) * 0.6, 0.6)), 'arr');
   if (t < F(2)) titular(ctx, [['¿Medida', 0], ['especial?', 1]], t, 0.1);
   else titular(ctx, [['Puertas', 0], ['a medida', 1]], t, F(2));
 }
@@ -128,7 +128,7 @@ function tomaD(t) { // instalación en 15 minutos
   titular(ctx, [['Instalada en', 0], ['15 minutos', 1]], t, t0);
   const c = easeOut(k(t, t0 + 0.2, 0.5));
   ctx.save(); ctx.globalAlpha = c; ctx.translate(0, (1 - c) * 40);
-  tarjeta(ctx, 620, 1330, 380, 230, (g, w) => {
+  tarjeta(ctx, 620, 1420, 380, 230, (g, w) => {
     g.fillStyle = PAL.tintaSuave; g.font = '500 32px "DM Sans"'; g.fillText('Instalación', 36, 60);
     const pr = ease(k(t, t0 + 0.4, fin - t0 - 0.2)), seg = Math.round(pr * 900);
     g.fillStyle = PAL.tinta; g.font = '800 84px "DM Sans"';
@@ -157,7 +157,7 @@ function tomaE(t) { // cierre: presupuesto + descuento
   // tarjeta WhatsApp
   const c = easeOut(k(t, t0 + 0.3, 0.5));
   ctx.save(); ctx.globalAlpha = c; ctx.translate(0, (1 - c) * 40);
-  tarjeta(ctx, 80, 1300, 600, 190, (g) => {
+  tarjeta(ctx, 80, 1420, 600, 190, (g) => {
     g.beginPath(); g.arc(80, 95, 46, 0, 7); g.fillStyle = rgb(AZ); g.fill();
     g.strokeStyle = '#fff'; g.lineWidth = 7; g.beginPath(); g.arc(80, 95, 22, Math.PI * 0.75, Math.PI * 2.55); g.stroke();
     g.fillStyle = PAL.tintaSuave; g.font = '500 32px "DM Sans"'; g.fillText('Escribinos tus medidas', 150, 80);
@@ -167,7 +167,7 @@ function tomaE(t) { // cierre: presupuesto + descuento
   // pastilla descuento
   const d = rebote(k(t, F(8) + (E(8) - F(8)) * 0.7, 0.5));
   if (d > 0) {
-    ctx.save(); ctx.translate(800, 1180); ctx.scale(d, d); ctx.rotate(-0.06);
+    ctx.save(); ctx.translate(560, 1730); ctx.scale(d, d); ctx.rotate(-0.06);
     ctx.font = '800 50px "DM Sans"'; const tx = '+5 puertas: descuento', tw = ctx.measureText(tx).width + 60;
     ctx.shadowColor = 'rgba(38,92,235,0.4)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 14;
     redondeado(ctx, -tw / 2 - 40, -50, tw, 100, 50); ctx.fillStyle = rgb(AZ); ctx.fill(); ctx.shadowColor = 'transparent';

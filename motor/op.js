@@ -2,6 +2,8 @@
 import { PAL, rgb, redondeado, tarjeta } from './iso.js';
 
 export const W = 1080, H = 1920;
+// Subtítulos centrados sobre la línea del tercio inferior (regla de tercios en 9:16).
+export const SUB_Y = Math.round(H * 2 / 3);
 export const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
 export const easeOut = t => t <= 0 ? 0 : t >= 1 ? 1 : 1 - Math.pow(1 - t, 3);
 export const rebote = t => { // sale de 0, pasa de 1 y se asienta
@@ -28,10 +30,10 @@ export function mostrar(s) { for (const [a, b] of MOSTRAR) s = s.replace(a, b); 
 export function subtitulos(tiempos) {
   const out = [];
   for (const [a, b, txt] of tiempos) {
-    const pal = mostrar(txt).replace(/[¿?:,.!¡]/g, ' ').toLowerCase().split(/\s+/).filter(Boolean);
+    const pal = mostrar(txt).replace(/(\d[\d,]*) m\b/g, '$1_m').replace(/[¿?:.!¡]|,(?!\d)/g, ' ').toLowerCase().split(/\s+/).filter(Boolean);
     const grupos = []; for (let i = 0; i < pal.length;) { const n = pal.length - i === 5 ? 3 : Math.min(4, pal.length - i); grupos.push(pal.slice(i, i + n)); i += n; }
     const tot = grupos.reduce((s, g) => s + g.join(' ').length, 0); let t = a;
-    for (const g of grupos) { const d = (b - a) * g.join(' ').length / tot; out.push([t, t + d, g.join(' ')]); t += d; }
+    for (const g of grupos) { const d = (b - a) * g.join(' ').length / tot; out.push([t, t + d, g.join(' ').replace(/_/g, ' ')]); t += d; }
   }
   return out;
 }
@@ -41,7 +43,7 @@ export function dibujarSub(ctx, subs, t, resaltar = []) {
   if (!s) return;
   const pop = easeOut(k(t, s[0], 0.12));
   ctx.save(); ctx.font = '700 60px "DM Sans"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  const w = ctx.measureText(s[2]).width + 76, x = (W - w) / 2, y = 1690;
+  const w = ctx.measureText(s[2]).width + 76, x = (W - w) / 2, y = SUB_Y - 48;
   ctx.translate(W / 2, y + 48); ctx.scale(0.9 + 0.1 * pop, 0.9 + 0.1 * pop); ctx.translate(-W / 2, -(y + 48));
   ctx.globalAlpha = pop;
   redondeado(ctx, x, y, w, 96, 48); ctx.fillStyle = 'rgba(27,34,51,0.93)'; ctx.fill();
