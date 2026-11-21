@@ -117,3 +117,52 @@ export function tilde(ctx, x, y, r, p) { // círculo con check
 }
 
 export { tarjeta, redondeado, rgb, PAL };
+
+// Cota con la etiqueta en un punto elegido (lp) y opacidad propia (para atenuar las descartadas).
+export function cotaEn(ctx, a, b, texto, prog, lp, { alfa = 1, ok = false } = {}) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.globalAlpha = alfa;
+  const x = a[0] + (b[0] - a[0]) * prog, y = a[1] + (b[1] - a[1]) * prog;
+  ctx.strokeStyle = rgb(PAL.acento); ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(...a); ctx.lineTo(x, y); ctx.stroke();
+  const dot = p => { ctx.beginPath(); ctx.arc(p[0], p[1], 8, 0, 7); ctx.fillStyle = rgb(PAL.acento); ctx.fill(); };
+  dot(a); if (prog > 0.98) dot(b);
+  const q = easeOut(k(prog, 0.75, 0.25));
+  if (q > 0 && texto) {
+    ctx.globalAlpha = alfa * q; ctx.font = '800 50px "DM Sans"';
+    const tw = ctx.measureText(texto).width + 44 + (ok ? 52 : 0);
+    // guía punteada del centro de la cota a la etiqueta
+    const m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    ctx.setLineDash([6, 8]); ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(...m); ctx.lineTo(lp[0], lp[1] + 40); ctx.stroke(); ctx.setLineDash([]);
+    ctx.shadowColor = 'rgba(38,92,235,0.3)'; ctx.shadowBlur = 26; ctx.shadowOffsetY = 8;
+    redondeado(ctx, lp[0], lp[1], tw, 80, 40); ctx.fillStyle = rgb(PAL.acento); ctx.fill(); ctx.shadowColor = 'transparent';
+    ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.fillText(texto, lp[0] + 22, lp[1] + 42);
+    if (ok) tilde(ctx, lp[0] + tw - 40, lp[1] + 40, 20, 1);
+  }
+  ctx.restore();
+}
+
+// Etiqueta blanca flotante (atributo) con un punto de color; p = progreso de entrada.
+export function etiqueta(ctx, x, y, texto, p, { acento = false, tam = 42 } = {}) {
+  if (p <= 0) return;
+  const s = rebote(p);
+  ctx.save(); ctx.font = `700 ${tam}px "DM Sans"`;
+  const tw = ctx.measureText(texto).width + 96, h = tam * 1.9;
+  ctx.translate(x, y + h / 2); ctx.scale(s, s); ctx.translate(-x, -(y + h / 2));
+  ctx.globalAlpha = Math.min(1, p * 3);
+  ctx.shadowColor = 'rgba(40,55,95,0.16)'; ctx.shadowBlur = 36; ctx.shadowOffsetY = 14;
+  redondeado(ctx, x, y, tw, h, h / 2); ctx.fillStyle = acento ? rgb(PAL.acento) : 'rgba(255,255,255,0.96)'; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.beginPath(); ctx.arc(x + 40, y + h / 2, 10, 0, 7); ctx.fillStyle = acento ? '#fff' : rgb(PAL.acento); ctx.fill();
+  ctx.fillStyle = acento ? '#fff' : PAL.tinta; ctx.textBaseline = 'middle'; ctx.fillText(texto, x + 66, y + h / 2 + 2);
+  ctx.restore();
+  return tw;
+}
+
+export function montar(ctx, t, cortes, tomas) { // fondo + toma activa + destello en cortes
+  const idx = cortes.filter(c => t >= c).length - 1, tc = cortes[idx];
+  tomas[idx](t);
+  const fl = 1 - k(t, tc, 0.18);
+  if (idx > 0 && fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl * 0.6})`; ctx.fillRect(0, 0, W, H); }
+  return idx;
+}

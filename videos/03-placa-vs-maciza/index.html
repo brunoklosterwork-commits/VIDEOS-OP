@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+import { Escena, PAL, fondo } from '../../motor/iso.js';
+import { camara, W, H, ease, easeOut, rebote, k, cargarTiempos, subtitulos, dibujarSub, marca, titular, etiqueta, montar, tarjeta, redondeado, rgb } from '../../motor/op.js';
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const AZ = PAL.acento, MAD = [228, 223, 214]; // maciza: arcilla cálida neutra
+let T, SUBS, F, E, DUR;
+async function init() {
+  const frases = (await (await fetch('frases.txt')).text()).trim().split('\n');
+  T = await cargarTiempos(frases); SUBS = subtitulos(T);
+  F = i => T[i][0]; E = i => T[i][1]; DUR = E(10) + 1.0; window.DUR = DUR;
+}
+const tercio = (i, n, a, b) => a + (b - a) * i / n; // reparte momentos dentro de una frase
+
+// ---------- A: las dos puertas ----------
+function tomaA(t) {
+  const e = new Escena(ctx, camara(t, 0, F(3), { escala: 125, ox: 500, oy: 930 }, { zoom: 0.07, dx: -50, piv: [540, 900] }));
+  e.caja(-5, -3, -0.4, 12, 9, 0.4, { suelo: true });
+  const s1 = easeOut(k(t, 0, 0.45)), s2 = easeOut(k(t, 0.15, 0.45));
+  e.caja(-2.3, -0.7, 0, 1.6, 1.4, 0.25 * s1, { suelo: true });
+  e.caja(0.9, -0.7, 0, 1.6, 1.4, 0.25 * s2, { suelo: true });
+  const d1 = rebote(k(t, 0.3, 0.8)), d2 = rebote(k(t, 0.5, 0.8));
+  if (d1 > 0) e.caja(-2.0, -0.07, 0.25, 1.0, 0.16, 2.3 * d1, { color: MAD });
+  if (d2 > 0) e.caja(1.2, -0.04, 0.25, 1.0, 0.08, 2.3 * d2, { color: AZ, brillo: 0.03 });
+  e.dibujar();
+  const l1 = e.p(-1.5, 0.7, 0.25), l2 = e.p(1.7, 0.7, 0.25);
+  etiqueta(ctx, l1[0] - 110, l1[1] + 10, 'Maciza', k(t, 0.9, 0.5));
+  etiqueta(ctx, l2[0] - 100, l2[1] + 10, 'Placa', k(t, 1.1, 0.5), { acento: true });
+  // "≠" entre las dos
+  const ne = rebote(k(t, F(1) + 0.2, 0.5));
+  if (ne > 0) {
+    const c = e.p(0.1, 0, 1.6);
+    ctx.save(); ctx.translate(c[0], c[1]); ctx.scale(ne, ne);
+    ctx.beginPath(); ctx.arc(0, 0, 58, 0, 7); ctx.fillStyle = '#fff'; ctx.shadowColor = 'rgba(40,55,95,0.18)'; ctx.shadowBlur = 30; ctx.fill();
+    ctx.shadowColor = 'transparent'; ctx.fillStyle = PAL.tinta; ctx.font = '800 64px "DM Sans"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('≠', 0, 4);
+    ctx.restore();
+  }
+  if (t < F(1)) titular(ctx, [['¿Placa', 1], ['o maciza?', 0]], t, 0.05);
+  else titular(ctx, [['Sirven para', 0], ['cosas distintas', 1]], t, F(1));
+}
+
+// ---------- B: la maciza ----------
+function tomaB(t) {
+  const t0 = F(3);
+  const e = new Escena(ctx, camara(t, t0, F(6), { escala: 205, ox: 470, oy: 900 }, { zoom: 0.06, dx: 50, piv: [700, 900] }));
+  e.caja(-4, -3, -0.4, 12, 9, 0.4, { suelo: true });
+  const tPes = F(4) + 0.05, tRui = tercio(1, 2, F(4), E(4)), tCar = F(5) + 0.15, tHum = tercio(1, 2, F(5), E(5));
+  // cae pesada; con la humedad se tuerce un poco
+  const cae = rebote(k(t, tPes, 0.55));
+  const dz = t < tPes ? 0.9 : (1 - cae) * 0.9;
+  const tuerce = Math.sin(Math.max(0, t - tHum) * 6) * 0.05 * k(t, tHum, 0.5);
+  e.cajaRot(1.0, 0.1, 0.02 + dz, 1.0, 0.2, 2.3, tuerce, { color: MAD });
+  e.dibujar();
+  // ondas de ruido que no pasan
+  const ru = k(t, tRui, 1.2) * (1 - k(t, tCar, 0.3));
+  if (ru > 0) {
+    const c = e.p(0.4, 1.2, 1.3);
+    ctx.save(); ctx.strokeStyle = rgb(AZ); ctx.lineWidth = 6; ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const f = (ru * 2 + i / 3) % 1; ctx.globalAlpha = (1 - f) * 0.8;
+      ctx.beginPath(); ctx.arc(c[0] - 140, c[1], 40 + f * 110, -0.6, 0.6); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // gotas de humedad
+  if (t > tHum) for (let i = 0; i < 6; i++) {
+    const f = ((t - tHum) * 0.9 + i / 6) % 1, x = 1.15 + (i * 0.37) % 0.9;
+    const q = e.p(x, 0.2, 3.6 - f * 1.3);
+    ctx.globalAlpha = Math.sin(f * Math.PI) * 0.9; ctx.fillStyle = rgb(PAL.acentoClaro);
+    ctx.beginPath(); ctx.ellipse(q[0], q[1], 9, 13, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  }
+  const X = 70;
+  etiqueta(ctx, X, 470, 'Madera sólida', k(t, t0 + 0.3, 0.5));
+  etiqueta(ctx, X, 570, 'Pesada', k(t, tPes, 0.5));
+  etiqueta(ctx, X, 670, 'Aísla el ruido', k(t, tRui, 0.5));
+  etiqueta(ctx, X, 770, 'Más cara', k(t, tCar, 0.5));
+  etiqueta(ctx, X, 870, 'Sufre la humedad', k(t, tHum, 0.5));
+  titular(ctx, [['La', 0], ['maciza', 1]], t, t0);
+}
+
+// ---------- C: la placa por dentro ----------
+function tomaC(t) {
+  const t0 = F(6);
+  const e = new Escena(ctx, camara(t, t0, F(8), { escala: 195, ox: 520, oy: 900 }, { zoom: 0.07, dx: -50, piv: [640, 880] }));
+  e.caja(-4, -3, -0.4, 12, 9, 0.4, { suelo: true });
+  const ex = ease(k(t, t0 + 0.4, 0.8)) * (1 - ease(k(t, F(7) + 0.2, 0.6)));
+  const sep = ex * 0.95, x0 = 0.6, Hh = 2.3, z0 = 0.02;
+  // bastidor (blanco)
+  const b = { color: [240, 242, 247] };
+  e.caja(x0, 0, z0, 0.09, 0.07, Hh, b);
+  e.caja(x0 + 0.91, 0, z0, 0.09, 0.07, Hh, b);
+  e.caja(x0 + 0.09, 0, z0, 0.82, 0.07, 0.09, b);
+  e.caja(x0 + 0.09, 0, z0 + Hh - 0.09, 0.82, 0.07, 0.09, b);
+  e.caja(x0 + 0.09, 0, z0 + Hh * 0.5, 0.82, 0.07, 0.07, b);
+  e.caja(x0 + 0.09, 0, z0 + Hh * 0.25, 0.82, 0.07, 0.05, b);
+  e.caja(x0 + 0.09, 0, z0 + Hh * 0.75, 0.82, 0.07, 0.05, b);
+  // dos tableros (azul)
+  e.caja(x0, -0.025 - sep, z0, 1.0, 0.025, Hh, { color: AZ, prof: -5 });
+  e.caja(x0, 0.07 + sep, z0, 1.0, 0.025, Hh, { color: AZ, brillo: 0.03, opac: 1 - 0.25 * ex, prof: 30 });
+  e.dibujar();
+  const lb = k(t, tercio(1, 3, F(6), E(6)), 0.5) * (1 - k(t, F(7), 0.3));
+  const lt = k(t, tercio(2, 3, F(6), E(6)), 0.5) * (1 - k(t, F(7), 0.3));
+  etiqueta(ctx, 70, 520, 'Bastidor adentro', lb);
+  etiqueta(ctx, 70, 620, 'Dos tableros afuera', lt, { acento: true });
+  const X = 70, d = (E(7) - F(7)) / 3;
+  etiqueta(ctx, X, 470, 'Más liviana', k(t, F(7) + 0.1, 0.5), { acento: true });
+  etiqueta(ctx, X, 570, 'Más estable', k(t, F(7) + d, 0.5), { acento: true });
+  etiqueta(ctx, X, 670, 'Más económica', k(t, F(7) + 2 * d, 0.5), { acento: true });
+  if (t < F(7)) titular(ctx, [['La placa', 0], ['por dentro', 1]], t, t0);
+  else titular(ctx, [['La', 0], ['placa', 1]], t, F(7));
+}
+
+// ---------- D: interiores ----------
+function tomaD(t) {
+  const t0 = F(8);
+  const e = new Escena(ctx, camara(t, t0, F(9), { escala: 72, ox: 500, oy: 820 }, { zoom: 0.07, dx: 60, piv: [540, 880] }));
+  e.caja(-2, -2, -0.5, 13, 12, 0.5, { suelo: true });
+  e.caja(0, 0, 0, 8, 7, 0.15, { suelo: true });
+  const s = easeOut(k(t, t0, 0.45)), HW = 2.9 * s, Tt = 0.25;
+  e.caja(0, 0, 0.15, Tt, 7, HW);
+  e.caja(Tt, 0, 0.15, 1.8, Tt, HW); e.caja(Tt + 3.0, 0, 0.15, 8 - Tt - 3.0, Tt, HW);
+  if (s > 0.9) e.caja(Tt + 1.8, 0, 2.55, 1.2, Tt, HW - 2.4);
+  // tabique interior con otra puerta
+  e.caja(4.6, Tt, 0.15, Tt, 1.4, HW); e.caja(4.6, Tt + 2.6, 0.15, Tt, 7 - Tt - 2.6, HW);
+  if (s > 0.9) e.caja(4.6, Tt + 1.4, 2.55, Tt, 1.2, HW - 2.4);
+  const p1 = rebote(k(t, t0 + 0.4, 0.7)), p2 = rebote(k(t, t0 + 0.75, 0.7));
+  if (p1 > 0) e.cajaRot(Tt + 1.85, Tt, 0.15 + (1 - p1) * 2, 1.1, 0.08, 2.38, 0.5 * ease(k(t, t0 + 1.3, 0.8)), { color: AZ, brillo: 0.03 });
+  if (p2 > 0) e.cajaRot(4.6 + Tt, Tt + 1.45, 0.15 + (1 - p2) * 2, 0.08, 1.1, 2.38, 0, { color: AZ, brillo: 0.03 });
+  e.caja(1.0, 4.6, 0.15, 2.2, 1.0, 0.5 * s); e.caja(1.0, 5.6, 0.15, 2.2, 0.3, 1.0 * s);
+  e.caja(6.0, 3.6, 0.15, 1.4, 2.0, 0.7 * s);
+  e.dibujar();
+  titular(ctx, [['Para', 0], ['interiores', 1]], t, t0);
+  etiqueta(ctx, 560, 470, 'La más práctica', k(t, tercio(2, 3, F(8), E(8)), 0.5), { acento: true });
+}
+
+// ---------- E: comentarios ----------
+function tomaE(t) {
+  const t0 = F(9);
+  const e = new Escena(ctx, camara(t, t0, DUR, { escala: 115, ox: 760, oy: 1010 }, { zoom: 0.06, dx: -40, piv: [700, 900] }));
+  e.caja(-4, -3, -0.4, 11, 9, 0.4, { suelo: true });
+  e.caja(-0.8, -0.7, 0, 1.6, 1.4, 0.25 * easeOut(k(t, t0, 0.4)), { suelo: true });
+  const d = rebote(k(t, t0 + 0.15, 0.7));
+  if (d > 0) e.cajaRot(-0.5, 0.05, 0.25, 1.0, 0.08, 2.3 * d, -0.25, { color: AZ, brillo: 0.03 });
+  e.dibujar();
+  if (t < F(10)) titular(ctx, [['¿Te quedó', 0], ['alguna duda?', 1]], t, t0);
+  else titular(ctx, [['Dejala en', 0], ['comentarios', 1]], t, F(10));
+  // tarjeta de comentario con "escribiendo..."
+  const c = easeOut(k(t, t0 + 0.25, 0.45));
+  ctx.save(); ctx.globalAlpha = c; ctx.translate(0, (1 - c) * 40);
+  tarjeta(ctx, 70, 520, 560, 200, (g) => {
+    g.beginPath(); g.arc(70, 70, 34, 0, 7); g.fillStyle = '#dfe4ee'; g.fill();
+    redondeado(g, 124, 46, 200, 20, 10); g.fillStyle = '#dfe4ee'; g.fill();
+    const escribe = k(t, F(10) + 0.2, 1.0);
+    if (escribe < 1) for (let i = 0; i < 3; i++) {
+      const a = 0.35 + 0.65 * Math.max(0, Math.sin(t * 8 - i * 0.9));
+      g.globalAlpha = c * a; g.beginPath(); g.arc(140 + i * 34, 128, 11, 0, 7); g.fillStyle = PAL.tintaSuave; g.fill();
+    } else {
+      g.fillStyle = PAL.tinta; g.font = '700 38px "DM Sans"'; g.textBaseline = 'middle'; g.fillStyle = PAL.tintaSuave; g.fillText('Tu pregunta acá…', 124, 128);
+    }
+  });
+  ctx.restore();
+  // respuesta: "te respondemos en un video"
+  const r = rebote(k(t, tercio(2, 3, F(10), E(10)), 0.55));
+  if (r > 0) {
+    ctx.save(); ctx.translate(560, 840); ctx.scale(r, r); ctx.translate(-560, -840);
+    tarjeta(ctx, 300, 770, 560, 140, (g) => {
+      g.beginPath(); g.arc(70, 70, 34, 0, 7); g.fillStyle = rgb(AZ); g.fill();
+      g.fillStyle = '#fff'; g.beginPath(); g.moveTo(60, 52); g.lineTo(86, 70); g.lineTo(60, 88); g.closePath(); g.fill();
+      g.fillStyle = PAL.tinta; g.font = '700 36px "DM Sans"'; g.textBaseline = 'middle'; g.fillText('Te respondemos en video', 124, 72);
+    });
+    ctx.restore();
+  }
+}
+
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
+  fondo(ctx, W, H);
+  montar(ctx, t, [0, F(3), F(6), F(8), F(9)], [tomaA, tomaB, tomaC, tomaD, tomaE]);
+  marca(ctx);
+  dibujarSub(ctx, SUBS, t, ['placa', 'maciza', 'distintas', 'sólida', 'pesada', 'ruido', 'cara', 'humedad', 'bastidor', 'tableros', 'liviana', 'estable', 'económica', 'interiores', 'práctica', 'duda', 'comentarios', 'video']);
+}
+window.ready = init().then(() => document.fonts.load('800 96px "DM Sans"')).then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
+</script></body></html>
