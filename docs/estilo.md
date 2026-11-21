@@ -24,3 +24,10 @@ El mundo es una **maqueta de arcilla blanca** vista en isométrico. Todo es blan
 - Logo y color real de OP.
 - Modelo fiel de la K64 (fotos del producto).
 - Optimizar el render (hoy ~1,4 s por cuadro por los desenfoques de sombra).
+
+## Modo 3D (desde el video 04)
+- Motor: `motor/escena3d.js` + `motor/personaje3d.js` (three.js en `motor/vendor/three`, render con WebGL por software).
+- Mismo lenguaje: arcilla blanca, luz suave de una sola fuente, un solo acento azul (puertas, flechas, resaltes).
+- **Personaje**: arcilla, gorro de lana, buzo azul OP, pantalón topo, zapatillas blancas. Gestos: caminar, saludar, señalar, pensar, asustarse, saltar. Extras (gente) en blanco/gris para no competir con el acento.
+- **Cámara en perspectiva**: dolly-in + traveling lateral en cada toma, distancia 10–17 m con FOV 30 para que entre el ancho en 9:16; lo importante por encima del tercio inferior.
+- Render ~1,2 s/cuadro (un video de 25 s ≈ 15 min).
