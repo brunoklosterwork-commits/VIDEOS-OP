@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+import { Escena, PAL, fondo, camino, tarjeta, redondeado, rgb } from '../../motor/iso.js';
+const W = 1080, H = 1920, cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const ease = t => t < 0 ? 0 : t > 1 ? 1 : t * t * (3 - 2 * t);
+const clamp01 = t => Math.max(0, Math.min(1, t));
+
+function escena(t) {
+  fondo(ctx, W, H);
+  const e = new Escena(ctx, { escala: 62, ox: 513, oy: 850 });
+  const AZ = PAL.acento;
+  // isla / maqueta
+  e.caja(-2, -2, -0.5, 16, 15, 0.5, { suelo: true });
+  // veredas
+  e.caja(-2, 9.2, 0, 16, 1.4, 0.06, { suelo: true });
+  e.caja(8.6, -2, 0, 1.4, 11.2, 0.06, { suelo: true });
+  // --- ambiente en corte: piso, dos paredes de fondo ---
+  e.caja(0, 0, 0, 7, 6, 0.15, { suelo: true });
+  const HW = 3.1, T = 0.28;
+  e.caja(0, 0, 0.15, T, 6, HW);                  // pared izquierda (x=0)
+  e.caja(T, 0, 0.15, 2.0, T, HW);                // pared fondo, tramo 1
+  e.caja(T + 3.35, 0, 0.15, 7 - T - 3.35, T, HW); // pared fondo, tramo 2
+  e.caja(T + 2.0, 0, 0.15 + 2.55, 1.35, T, HW - 2.55); // dintel
+  // marco de la puerta (acento)
+  e.caja(T + 2.0, -0.02, 0.15, 0.09, T + 0.04, 2.55, { color: AZ });
+  e.caja(T + 3.26, -0.02, 0.15, 0.09, T + 0.04, 2.55, { color: AZ });
+  e.caja(T + 2.0, -0.02, 2.62, 1.35, T + 0.04, 0.08, { color: AZ });
+  // hoja K64 abriendo hacia adentro
+  const ang = ease((t - 0.6) / 1.4) * 1.05;
+  e.cajaRot(T + 2.09, T, 0.17, 1.17, 0.09, 2.44, ang, { color: AZ, brillo: 0.04 });
+  // mobiliario blanco
+  e.caja(4.4, 0.8, 0.15, 2.2, 0.9, 0.55);    // sillón base
+  e.caja(4.4, 0.6, 0.15, 2.2, 0.3, 1.15);    // respaldo
+  e.caja(4.6, 2.4, 0.15, 1.4, 0.9, 0.45);    // mesa baja
+  e.caja(0.6, 4.3, 0.15, 1.6, 1.2, 0.8);     // mueble
+  e.esfera(1.0, 1.0, 0.15, 0.38);            // maceta
+  e.caja(0.75, 0.75, 0.15, 0.5, 0.5, 0.35);
+  // exterior: utilitario y pila de puertas
+  e.caja(10.3, 3.0, 0.25, 2.0, 3.6, 1.9);    // furgón caja
+  e.caja(10.3, 6.6, 0.25, 2.0, 1.3, 1.3);    // cabina
+  e.caja(10.45, 7.75, 0.9, 1.7, 0.2, 0.55, { color: [215, 222, 236] }); // parabrisas
+  for (const [x, y] of [[12.3, 3.6], [12.3, 7.1]]) e.caja(x, y - 0.3, 0, 0.05, 0.6, 0.45, { color: [205, 211, 224] });
+  e.caja(10.7, -1.4, 0, 1.6, 2.9, 0.1, { suelo: true });
+  for (let i = 0; i < 5; i++) e.caja(10.9, -1.2, 0.1 + i * 0.12, 1.2, 2.5, 0.1, i === 4 ? { color: AZ } : {});
+  // árboles
+  for (const [x, y, r] of [[-1.2, 7.5, 0.7], [-0.5, 8.4, 0.5], [5.5, 11.5, 0.6], [6.6, 11.8, 0.45]]) {
+    e.caja(x - 0.06, y - 0.06, 0, 0.12, 0.12, r * 1.2, { sombra: false }); e.esfera(x, y, r * 0.9, r, { color: [222, 229, 243] });
+  }
+  e.dibujar(() => camino(e, [[11.3, 8.4], [11.3, 9.9], [7.9, 9.9], [7.9, 6.8], [2.9, 6.8], [2.9, 1.4]], ease(t / 1.6)));
+}
+
+function hud(t) {
+  // marca
+  ctx.fillStyle = PAL.tinta; ctx.font = '700 40px "DM Sans"'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('OP', 80, 130); ctx.font = '400 40px "DM Sans"'; ctx.fillStyle = PAL.tintaSuave; ctx.fillText('sistemas', 140, 130);
+  // titular
+  ctx.fillStyle = PAL.tinta; ctx.font = '800 92px "DM Sans"';
+  ctx.fillText('¿Una puerta', 80, 290);
+  ctx.fillText('instalada en', 80, 392);
+  ctx.fillStyle = rgb(PAL.acento); ctx.fillText('15 minutos?', 80, 494);
+  // tarjeta cronómetro
+  const k = ease((t - 0.3) / 0.6);
+  ctx.save(); ctx.globalAlpha = k; ctx.translate(0, (1 - k) * 40);
+  tarjeta(ctx, 60, 1400, 360, 220, (c, w, h) => {
+    c.fillStyle = PAL.tintaSuave; c.font = '500 30px "DM Sans"'; c.fillText('Instalación K64', 34, 58);
+    const pr = clamp01((t - 0.6) / 2.4), seg = Math.round(pr * 15 * 60);
+    c.fillStyle = PAL.tinta; c.font = '800 78px "DM Sans"';
+    c.fillText(`${String(Math.floor(seg / 60)).padStart(2, '0')}:${String(seg % 60).padStart(2, '0')}`, 34, 145);
+    redondeado(c, 34, 172, w - 68, 14, 7); c.fillStyle = '#e8ecf4'; c.fill();
+    redondeado(c, 34, 172, (w - 68) * Math.max(0.04, pr), 14, 7); c.fillStyle = rgb(PAL.acento); c.fill();
+  });
+  ctx.restore();
+  // subtítulo estilo
+  ctx.textAlign = 'center'; ctx.font = '700 58px "DM Sans"';
+  const sub = 'sin obra, sin polvo', sw = ctx.measureText(sub).width + 70;
+  redondeado(ctx, (W - sw) / 2, 1700, sw, 96, 48); ctx.fillStyle = 'rgba(27,34,51,0.92)'; ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.fillText(sub, W / 2, 1766); ctx.textAlign = 'left';
+}
+
+function draw(t) { ctx.clearRect(0, 0, W, H); escena(t); hud(t); }
+window.ready = document.fonts.load('800 92px "DM Sans"').then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
+window.draw = draw;
+</script></body></html>
