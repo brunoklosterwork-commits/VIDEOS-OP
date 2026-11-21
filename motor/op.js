@@ -40,7 +40,7 @@ export function subtitulos(tiempos) {
   const out = [];
   for (const [a, b, txt] of tiempos) {
     const pal = mostrar(txt).replace(/(\d[\d,]*) m\b/g, '$1_m').replace(/[¿?:.!¡]|,(?!\d)/g, ' ').toLowerCase().split(/\s+/).filter(Boolean);
-    const grupos = []; for (let i = 0; i < pal.length;) { const n = pal.length - i === 5 ? 3 : Math.min(4, pal.length - i); grupos.push(pal.slice(i, i + n)); i += n; }
+    const grupos = []; for (let i = 0; i < pal.length;) { let n = pal.length - i === 5 ? 3 : Math.min(4, pal.length - i); while (n > 2 && pal.slice(i, i + n).join(' ').length > 24) n--; grupos.push(pal.slice(i, i + n)); i += n; }
     const tot = grupos.reduce((s, g) => s + g.join(' ').length, 0); let t = a;
     for (const g of grupos) { const d = (b - a) * g.join(' ').length / tot; out.push([t, t + d, g.join(' ').replace(/_/g, ' ')]); t += d; }
   }
@@ -66,19 +66,19 @@ export function dibujarSub(ctx, subs, t, resaltar = []) {
   ctx.restore();
 }
 
-export function marca(ctx) {
+export function marca(ctx, claro = false) {
   ctx.save(); ctx.textBaseline = 'alphabetic';
-  ctx.fillStyle = PAL.tinta; ctx.font = '700 40px "DM Sans"'; ctx.fillText('OP', 80, 130);
-  ctx.font = '400 40px "DM Sans"'; ctx.fillStyle = PAL.tintaSuave; ctx.fillText('sistemas', 140, 130);
+  ctx.fillStyle = claro ? '#fff' : PAL.tinta; ctx.font = '700 40px "DM Sans"'; ctx.fillText('OP', 80, 130);
+  ctx.font = '400 40px "DM Sans"'; ctx.fillStyle = claro ? 'rgba(255,255,255,0.7)' : PAL.tintaSuave; ctx.fillText('sistemas', 140, 130);
   ctx.restore();
 }
 
 // Titular: líneas [[texto, acento?], ...], entra palabra por palabra desde abajo.
-export function titular(ctx, lineas, t, t0, { y = 290, tam = 96 } = {}) {
+export function titular(ctx, lineas, t, t0, { y = 290, tam = 96, claro = false } = {}) {
   ctx.save(); ctx.font = `800 ${tam}px "DM Sans"`; ctx.textBaseline = 'alphabetic';
   lineas.forEach(([txt, ac], i) => {
     const p = easeOut(k(t, t0 + i * 0.12, 0.45));
-    ctx.globalAlpha = p; ctx.fillStyle = ac ? rgb(PAL.acento) : PAL.tinta;
+    ctx.globalAlpha = p; ctx.fillStyle = ac ? (claro ? rgb(PAL.acentoClaro) : rgb(PAL.acento)) : (claro ? '#fff' : PAL.tinta);
     ctx.fillText(txt, 80, y + i * tam * 1.08 + (1 - p) * 40);
   });
   ctx.restore();

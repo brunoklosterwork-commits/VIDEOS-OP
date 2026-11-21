@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+<script type="importmap">{"imports":{"three":"../../motor/vendor/three/three.module.js","three/addons/":"../../motor/vendor/three/examples/jsm/"}}</script>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+import { THREE, crearMundo, componer, MAT, clay, caja, esfera, grupo, paredConPuerta, fantasma, nivel, anillo } from '../../motor/escena3d.js';
+import { crearPersonaje } from '../../motor/personaje3d.js';
+import { W, H, ease, easeOut, rebote, k, cargarTiempos, subtitulos, dibujarSub, marca, titular, etiqueta } from '../../motor/op.js';
+
+const out = document.getElementById('c'), ctx = out.getContext('2d');
+const M = crearMundo(), S = M.scene;
+let T, SUBS, F, E, DUR;
+async function init() {
+  const fr = (await (await fetch('frases.txt')).text()).trim().split('\n');
+  T = await cargarTiempos(fr); SUBS = subtitulos(T); F = i => T[i][0]; E = i => T[i][1]; DUR = E(11) + 0.9; window.DUR = DUR;
+}
+
+// ---------- decorados (cada toma en su propio grupo) ----------
+// A: cuarto a oscuras, la puerta que se abre sola y el fantasmita
+const gA = grupo(S, 0, 0, 0);
+const pA = paredConPuerta(gA, { x0: 0, z0: 0, largo: 7 });
+caja(gA, 1.0, 0.8, 0.45, MAT.blanco, 2.2, 0.4, 0.6); esfera(gA, 0.28, MAT.gris, 2.0, 1.08, 0.6);
+const fan = fantasma(gA); fan.position.set(0.15, 1.0, 0.7);
+
+// marco "suelto" (pared corta + marco + hoja) que se puede inclinar
+function marcoInclinable(padre, x0) {
+  const g = grupo(padre, x0, 0, 0);          // pivote abajo al centro
+  const p = paredConPuerta(g, { x0: 0, z0: 0, largo: 2.4, alto: 2.6 });
+  const nv = nivel(g, 1.1); nv.position.set(0, 2.65, 0.0);
+  return { g, ...p, nv };
+}
+// B: un marco fuera de plomo + plomada
+const gB = grupo(S, 20, 0, 0);
+const mB = marcoInclinable(gB, 0);
+const plomada = grupo(gB, -0.36, 2.45, 0.2);
+const hilo = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 1, 8), MAT.azul); hilo.position.y = -0.5; plomada.add(hilo);
+const pesa = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 20), MAT.azul); pesa.rotation.x = Math.PI; plomada.add(pesa);
+// C: dos marcos, uno se abre solo y otro se cierra de golpe
+const gC = grupo(S, 40, 0, 0);
+const mC1 = marcoInclinable(gC, -1.5), mC2 = marcoInclinable(gC, 1.5);
+// D: el marco que se endereza + bisagras resaltadas
+const gD = grupo(S, 60, 0, 0);
+const mD = marcoInclinable(gD, 0);
+const anillos = [0.25, 1.05, 1.85].map(y => { const a = anillo(mD.g, 0.1); a.position.set(-0.4, y, 0.14); return a; });
+// E: cierre
+const gE = grupo(S, 80, 0, 0);
+const pE = paredConPuerta(gE, { x0: 0, z0: -0.8, largo: 6 });
+caja(gE, 0.9, 0.7, 0.45, MAT.blanco, -1.9, 0.35, -0.3); esfera(gE, 0.3, MAT.gris, 1.9, 0.3, -0.2);
+
+const P = crearPersonaje(); S.add(P.raiz);
+const tomas = [gA, gB, gC, gD, gE];
+
+function asustado(f) { // brazos al frente y cuerpo hacia atrás
+  P.brazoI.p1.rotation.x = P.brazoD.p1.rotation.x = -1.1 * f;
+  P.brazoI.p2.rotation.x = P.brazoD.p2.rotation.x = -0.9 * f;
+  P.brazoI.p1.rotation.z = -0.3 * f; P.brazoD.p1.rotation.z = 0.3 * f;
+  P.torso.rotation.x = -0.12 * f; P.cabeza.rotation.x = -0.1 * f;
+}
+function salto(t, t0) { const q = k(t, t0, 0.45); if (q > 0 && q < 1) P.cadera.position.y += Math.sin(q * Math.PI) * 0.28; }
+
+function toma(t, i, foco, desde, hasta, t0, t1) {
+  tomas.forEach((g, j) => g.visible = j === i);
+  const c = ease(k(t, t0, t1 - t0));
+  M.cam.position.set(foco[0] + desde[0] + (hasta[0] - desde[0]) * c, desde[1] + (hasta[1] - desde[1]) * c, desde[2] + (hasta[2] - desde[2]) * c);
+  M.cam.lookAt(foco[0] + (desde[3] ?? 0), foco[1], foco[2]);
+  M.sol.target.position.set(foco[0], 0, 0); M.sol.position.set(foco[0] - 4, 8, 6);
+}
+
+function draw(t) {
+  P.reset(); P.raiz.scale.setScalar(1); let temblor = 0, oscuro = false;
+  const cortes = [0, F(3), F(7), F(9), F(11)], idx = cortes.filter(c => t >= c).length - 1;
+  if (idx === 0) {
+    toma(t, 0, [0.6, 0.8, 0], [1.0, 2.6, 13.5], [0.6, 2.2, 11.5], 0, F(3));
+    const luz = ease(k(t, F(2) + 0.05, 0.18)); M.noche(1 - luz); oscuro = luz < 0.5;
+    pA.bisagra.rotation.y = -1.25 * ease(k(t, 0.25, 1.6)) + Math.sin(t * 3) * 0.02 * (1 - luz);
+    P.raiz.position.set(1.5, 0, 1.4); P.raiz.rotation.y = -0.55;
+    asustado(ease(k(t, 1.0, 0.3)) * (1 - ease(k(t, F(2) + 0.2, 0.4))));
+    if (t > F(2) + 0.25) P.pensar(ease(k(t, F(2) + 0.3, 0.4)));
+    P.respirar(t, 2); P.parpadear(t);
+    const fa = rebote(k(t, F(1), 0.5)) * (1 - ease(k(t, F(2) + 0.05, 0.25)));
+    fan.visible = fa > 0.01; fan.scale.setScalar(Math.max(0.01, fa)); fan.position.y = 1.0 + Math.sin(t * 3) * 0.08; fan.rotation.y = Math.sin(t * 1.5) * 0.3;
+  } else {
+    M.noche(0);
+  }
+  if (idx === 1) {
+    const t0 = F(3);
+    toma(t, 1, [20.5, 0.8, 0], [-2.0, 2.8, 13], [1.2, 2.4, 11], t0, F(7));
+    mB.g.rotation.z = 0.075 * ease(k(t, t0 + 0.2, 0.7));
+    mB.nv.burbuja(-0.9 * ease(k(t, t0 + 0.7, 0.6)));
+    plomada.visible = t > F(4); plomada.scale.y = ease(k(t, F(4), 0.5));
+    mB.bisagra.rotation.y = -1.15 * ease(k(t, F(6) + 0.1, 1.6));
+    P.raiz.position.set(21.6, 0, 0.9); P.raiz.rotation.y = -0.5;
+    P.señalar(ease(k(t, F(5), 0.4)), -1); P.respirar(t); P.parpadear(t);
+  }
+  if (idx === 2) {
+    const t0 = F(7);
+    toma(t, 2, [40, 0.8, 0], [1.5, 3.0, 15.5], [-0.8, 2.6, 14], t0, F(9));
+    mC1.g.rotation.z = 0.07; mC2.g.rotation.z = -0.07;
+    mC1.bisagra.rotation.y = -1.2 * ease(k(t, t0 + 0.2, 1.3));
+    const golpe = F(8) + 0.55, g = k(t, golpe - 0.32, 0.32);
+    mC2.bisagra.rotation.y = -1.2 * (1 - g * g * g);
+    if (t > golpe && t < golpe + 0.3) temblor = 18 * (1 - (t - golpe) / 0.3);
+    P.raiz.position.set(40, 0, 1.3); P.raiz.rotation.y = 0.15;
+    if (t > golpe) { asustado(1 - ease(k(t, golpe + 0.6, 0.5))); salto(t, golpe); }
+    P.respirar(t); P.parpadear(t);
+  }
+  if (idx === 3) {
+    const t0 = F(9);
+    toma(t, 3, [60.5, 0.8, 0], [2.2, 2.6, 12.5], [0.8, 2.2, 10.5], t0, F(11));
+    const endereza = ease(k(t, F(10) + 0.3, 1.0));
+    mD.g.rotation.z = 0.075 * (1 - endereza);
+    mD.nv.burbuja(-0.9 * (1 - endereza));
+    mD.bisagra.rotation.y = -0.7 + 0.7 * ease(k(t, F(10) + 1.0, 0.7));
+    anillos.forEach((a, i) => { const p = k(t, F(10) + i * 0.15, 0.4); a.visible = p > 0 && t < F(11); a.scale.setScalar(rebote(p) * (1 + Math.sin(t * 6) * 0.06)); });
+    P.raiz.position.set(61.4, 0, 1.0); P.raiz.rotation.y = -0.6;
+    if (t < F(10)) P.pensar(ease(k(t, t0 + 0.1, 0.4))); else P.señalar(ease(k(t, F(10), 0.4)), -1);
+    P.respirar(t); P.parpadear(t);
+  }
+  if (idx === 4) {
+    const t0 = F(11);
+    toma(t, 4, [80, 0.8, 0], [0.8, 2.2, 11.5], [0, 2.0, 9.5], t0, DUR);
+    pE.bisagra.rotation.y = -0.35;
+    P.raiz.position.set(80, 0, 1.0); P.raiz.rotation.y = 0;
+    P.saludar(t, ease(k(t, t0 + 0.1, 0.3))); P.respirar(t); P.parpadear(t);
+  }
+  componer(ctx, M, temblor);
+  // ---------- capa 2D: titulares, etiquetas, subtítulos ----------
+  marca(ctx, oscuro);
+  if (idx === 0) {
+    if (t < F(1)) titular(ctx, [['Si tu puerta', 0], ['se abre sola…', 1]], t, 0.05, { claro: true });
+    else if (t < F(2)) titular(ctx, [['No es un', 0], ['fantasma', 1]], t, F(1), { claro: oscuro });
+    else titular(ctx, [['Es la', 0], ['gravedad', 1]], t, F(2));
+  } else if (idx === 1) {
+    if (t < F(6)) titular(ctx, [['Marco', 0], ['fuera de plomo', 1]], t, F(3));
+    else titular(ctx, [['Busca el punto', 0], ['más bajo', 1]], t, F(6));
+  } else if (idx === 2) {
+    if (t < F(8)) titular(ctx, [['Unas se', 0], ['abren solas', 1]], t, F(7));
+    else titular(ctx, [['Otras se cierran', 0], ['de golpe', 1]], t, F(8));
+  } else if (idx === 3) {
+    if (t < F(10)) titular(ctx, [['No hace falta', 0], ['cambiarla', 1]], t, F(9));
+    else titular(ctx, [['Ajustá', 0], ['y nivelá', 1]], t, F(10));
+    etiqueta(ctx, 70, 1420, 'Ajustar bisagras', k(t, F(10) + 0.3, 0.5), { acento: true });
+    etiqueta(ctx, 70, 1520, 'Nivelar el marco', k(t, F(10) + 1.2, 0.5), { acento: true });
+  } else {
+    titular(ctx, [['Más secretos', 0], ['de tu casa', 1]], t, F(11));
+    etiqueta(ctx, 360, 1460, 'Seguinos', k(t, F(11) + 0.6, 0.5), { acento: true, tam: 52 });
+  }
+  if (idx > 0) { const fl = 1 - k(t, cortes[idx], 0.18); if (fl > 0) { ctx.fillStyle = `rgba(255,255,255,${fl * 0.6})`; ctx.fillRect(0, 0, W, H); } }
+  dibujarSub(ctx, SUBS, t, ['sola', 'fantasma', 'gravedad', 'plomo', 'inclinada', 'bajo', 'solas', 'golpe', 'solución', 'bisagras', 'marco', 'secretos']);
+}
+window.ready = init().then(() => document.fonts.load('800 96px "DM Sans"')).then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return out.toDataURL('image/jpeg', 0.92); };
+</script></body></html>

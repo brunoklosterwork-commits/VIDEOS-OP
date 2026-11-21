@@ -38,7 +38,8 @@ def servidor():
 
 def open_page(p, html):
     exe = os.environ.get('CHROME') or ('/usr/bin/google-chrome' if Path('/usr/bin/google-chrome').exists() else None)
-    b = p.chromium.launch(executable_path=exe) if exe else p.chromium.launch()
+    args = ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist']  # WebGL sin GPU (escenas 3D)
+    b = p.chromium.launch(executable_path=exe, args=args) if exe else p.chromium.launch(args=args)
     pg = b.new_page(viewport={'width': 1080, 'height': 1920})
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
