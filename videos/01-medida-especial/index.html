@@ -5,7 +5,7 @@
 <canvas id="c" width="1080" height="1920"></canvas>
 <script type="module">
 import { Escena, PAL, fondo, camino } from '../../motor/iso.js';
-import { W, H, ease, easeOut, rebote, k, cargarTiempos, subtitulos, dibujarSub, marca, titular, cota, tilde, tarjeta, redondeado, rgb } from '../../motor/op.js';
+import { camara, W, H, ease, easeOut, rebote, k, cargarTiempos, subtitulos, dibujarSub, marca, titular, cota, tilde, tarjeta, redondeado, rgb } from '../../motor/op.js';
 
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const AZ = PAL.acento;
@@ -21,7 +21,7 @@ async function init() {
 
 // ---------- tomas ----------
 function tomaA_B(t) { // pared con hueco: la estándar no entra / la de OP se hace a medida
-  const e = new Escena(ctx, { escala: 145, ox: 470, oy: 950 });
+  const e = new Escena(ctx, camara(t, 0, F(4), { escala: 145, ox: 470, oy: 950 }, { zoom: 0.09, dx: -70, piv: [560, 820] }));
   e.caja(-3, -2, -0.4, 11, 9, 0.4, { suelo: true });
   const crece = rebote(k(t, F(2) + 0.25, 0.9));
   const hp = 3.0 * easeOut(k(t, 0, 0.5)); // la pared sube al empezar
@@ -33,8 +33,8 @@ function tomaA_B(t) { // pared con hueco: la estándar no entra / la de OP se ha
   const tiembla = Math.sin(t * 40) * 0.025 * Math.exp(-Math.max(0, t - F(1)) * 4) * (t > F(1) ? 1 : 0);
   const w = 0.7 + 0.3 * crece, h = 2.0 + 0.5 * crece;
   const x0 = 2.1 - w / 2 + tiembla, y0 = 0.12 + (1 - entra) * 3.2;
-  e.caja(x0, y0, 0, w, 0.07, h, { color: AZ, brillo: 0.03 });
-  e.caja(x0 + w * 0.82, y0 + 0.07, h * 0.45, 0.06, 0.06, 0.12, { color: [230, 236, 248] }); // manija
+  e.caja(x0, y0, 0, w, 0.07, h, { color: AZ, brillo: 0.03, prof: 50 }); // siempre delante de la pared
+  e.caja(x0 + w * 0.82, y0 + 0.07, h * 0.45, 0.06, 0.06, 0.12, { color: [230, 236, 248], prof: 51 }); // manija
   // ambiente
   e.caja(3.4, 1.4, 0, 1.4, 0.6, 0.9 * easeOut(k(t, 0.2, 0.5)));
   e.esfera(-0.4, 1.6, 0, 0.35 * easeOut(k(t, 0.3, 0.5)), { color: [222, 229, 243] });
@@ -56,7 +56,7 @@ function tomaA_B(t) { // pared con hueco: la estándar no entra / la de OP se ha
 
 function tomaC(t) { // de taller a casa, checklist
   const t0 = F(4);
-  const e = new Escena(ctx, { escala: 56, ox: 420, oy: 740 });
+  const e = new Escena(ctx, camara(t, F(4), F(6), { escala: 56, ox: 420, oy: 740 }, { zoom: 0.04, dx: 80, piv: [540, 900] }));
   e.caja(-2, -2, -0.4, 16, 15, 0.4, { suelo: true });
   e.caja(-2, 8.6, 0, 16, 1.2, 0.05, { suelo: true });
   const s1 = easeOut(k(t, t0, 0.5)), s2 = easeOut(k(t, t0 + 0.15, 0.5));
@@ -104,7 +104,7 @@ function enRuta(R, p) {
 
 function tomaD(t) { // instalación en 15 minutos
   const t0 = F(6), fin = E(6);
-  const e = new Escena(ctx, { escala: 80, ox: 520, oy: 780 });
+  const e = new Escena(ctx, camara(t, F(6), F(7), { escala: 80, ox: 520, oy: 780 }, { zoom: 0.08, dx: -30, piv: [600, 860] }));
   e.caja(-2, -2, -0.5, 12, 11, 0.5, { suelo: true });
   e.caja(0, 0, 0, 7, 6, 0.15, { suelo: true });
   const HW = 3.1, Tt = 0.28, s = easeOut(k(t, t0, 0.45));
@@ -141,7 +141,7 @@ function tomaD(t) { // instalación en 15 minutos
 
 function tomaE(t) { // cierre: presupuesto + descuento
   const t0 = F(7);
-  const e = new Escena(ctx, { escala: 120, ox: 540, oy: 860 });
+  const e = new Escena(ctx, camara(t, F(7), DUR, { escala: 120, ox: 540, oy: 860 }, { zoom: 0.06, dx: -60, piv: [540, 900] }));
   e.caja(-4, -4, -0.4, 10, 10, 0.4, { suelo: true });
   const s = easeOut(k(t, t0, 0.4));
   e.caja(-0.9, -0.9, 0, 1.8, 1.8, 0.25 * s, { suelo: true });
@@ -181,7 +181,7 @@ function draw(t) {
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H);
   const cortes = [0, F(4), F(6), F(7)], idx = cortes.filter(c => t >= c).length - 1, tc = cortes[idx];
   // entrada de cada toma: leve zoom
-  const z = 1 + 0.05 * (1 - easeOut(k(t, tc, 0.4)));
+  const z = 1;
   fondo(ctx, W, H);
   ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(z, z); ctx.translate(-W / 2, -H / 2);
   [tomaA_B, tomaC, tomaD, tomaE][idx](t);

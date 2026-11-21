@@ -12,6 +12,15 @@ export const rebote = t => { // sale de 0, pasa de 1 y se asienta
 };
 export const k = (t, a, d) => Math.max(0, Math.min(1, (t - a) / d)); // progreso 0..1
 
+// Cámara suave de cada toma: zoom-in lento + traveling lateral (mueve solo la maqueta).
+// base = {escala, ox, oy}; mov = {zoom: 0.06, dx: 60, dy: 0, piv: [540, 900]}
+export function camara(t, t0, t1, base, mov = {}) {
+  const { zoom = 0.06, dx = 0, dy = 0, piv = [540, 900] } = mov;
+  const p = ease(k(t, t0, Math.max(0.1, t1 - t0)));
+  const z = 1 + zoom * p, mx = dx * (p - 0.5), my = dy * (p - 0.5);
+  return { escala: base.escala * z, ox: piv[0] + (base.ox - piv[0]) * z + mx, oy: piv[1] + (base.oy - piv[1]) * z + my };
+}
+
 // Tiempos de frases: usa tiempos.json (de alinear.py) o estima por largo.
 export async function cargarTiempos(frases) {
   try {

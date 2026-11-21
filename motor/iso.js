@@ -24,10 +24,10 @@ export class Escena {
     return [this.ox + (x - y) * COS * this.s, this.oy + ((x + y) * SIN - z) * this.s];
   }
   // prisma: huella poligonal (lista [x,y]) extruida de z0 a z1
-  prisma(huella, z0, z1, { color = PAL.blanco, brillo = 0, sombra = true, opac = 1, suelo = false } = {}) {
+  prisma(huella, z0, z1, { color = PAL.blanco, brillo = 0, sombra = true, opac = 1, suelo = false, prof = null } = {}) {
     const cx = huella.reduce((a, q) => a + q[0], 0) / huella.length;
     const cy = huella.reduce((a, q) => a + q[1], 0) / huella.length;
-    this.items.push({ tipo: 'prisma', huella, z0, z1, color, brillo, sombra: sombra && !suelo, opac, suelo, prof: cx + cy + z0 * 0.01 });
+    this.items.push({ tipo: 'prisma', huella, z0, z1, color, brillo, sombra: sombra && !suelo, opac, suelo, prof: prof ?? (cx + cy + z0 * 0.01) });  // prof: forzar orden de dibujo
     return this;
   }
   caja(x, y, z, w, d, h, o = {}) {
