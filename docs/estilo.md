@@ -32,3 +32,14 @@ El mundo es una **maqueta de arcilla blanca** vista en isométrico. Todo es blan
 - **Personaje**: arcilla, gorro de lana, buzo azul OP, pantalón topo, zapatillas blancas. Gestos: caminar, saludar, señalar, pensar, asustarse, saltar. Extras (gente) en blanco/gris para no competir con el acento.
 - **Cámara en perspectiva**: dolly-in + traveling lateral en cada toma, distancia 10–17 m con FOV 30 para que entre el ancho en 9:16; lo importante por encima del tercio inferior.
 - Render ~1,2 s/cuadro (un video de 25 s ≈ 15 min).
+
+## Estilo "Plumilla OP" (elegido el 22/11/2026, para el video 06 en adelante)
+Prueba de referencia: `estilo/prueba-plumilla-2/`.
+- **Papel** crema `#E8E3D6`, **tinta** `#2A2826`, **acento** azul `#2456D6` (solo para el dato o el accesorio clave).
+- **Tres niveles de valor**, sin mezclar:
+  1. Papel limpio en lo protagonista (la abertura, el vidrio, la pared de frente).
+  2. Rayado paralelo solo en medios tonos (pared en sombra, borde del cielo, piso que se desvanece, lado de luz del follaje).
+  3. Negro pleno en las sombras profundas (aleros, interior del vano, alféizares, lado oscuro).
+- Contornos limpios en la abertura (marco 6 px, hojas 5 px, contramarco 2 px); vidrio casi vacío, 2–3 reflejos.
+- **Animación**: las líneas se trazan solas en orden; los negros se pintan con un barrido; después actúa la abertura (hojas que se corren, etc.) y aparece el acento azul.
+- Render ~2 s por segundo de video.
