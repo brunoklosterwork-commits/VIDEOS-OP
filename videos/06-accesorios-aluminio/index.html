@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+import { crear, PAPEL, TINTA, AZUL, W, H } from '../../motor/plumilla.js';
+import { PAL, ease, easeOut, rebote, k, cargarTiempos, subtitulos, dibujarSub, marca, titular, tilde } from '../../motor/op.js';
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), P = crear(ctx);
+// la capa de texto usa la tinta y el papel de la plumilla
+PAL.tinta = TINTA; PAL.tintaSuave = '#6f6a62'; PAL.halo = PAPEL; PAL.acento = [36, 86, 214]; PAL.acentoClaro = [36, 86, 214];
+let T, SUBS, F, E, DUR;
+async function init() {
+  const fr = (await (await fetch('frases.txt')).text()).trim().split('\n');
+  T = await cargarTiempos(fr); SUBS = subtitulos(T); F = i => T[i][0]; E = i => T[i][1]; DUR = E(10) + 1.0; window.DUR = DUR;
+}
+const e = ease;
+
+// cámara 2D suave: zoom-in + traveling lateral de toda la escena (no del texto)
+function camara(t, t0, t1, zoom = 0.05, dx = 30, piv = [540, 860]) {
+  const p = e(k(t, t0, t1 - t0)), z = 1 + zoom * p;
+  ctx.translate(piv[0] + dx * (p - 0.5), piv[1]); ctx.scale(z, z); ctx.translate(-piv[0], -piv[1]);
+}
+// etiqueta de precio colgante
+function precio(x, y, txt, p, acento) {
+  if (p <= 0) return;
+  const s = rebote(p), sw = Math.sin(performance.now ? 0 : 0);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-0.08); ctx.scale(s, s);
+  P.linea(0, -70, 0, -20, 1, 2.5);
+  ctx.font = '800 64px "DM Sans"'; const tw = ctx.measureText(txt).width + 60;
+  ctx.fillStyle = acento ? AZUL : PAPEL; ctx.fillRect(-tw / 2, -20, tw, 92);
+  ctx.strokeStyle = acento ? AZUL : TINTA; ctx.lineWidth = 4; ctx.strokeRect(-tw / 2, -20, tw, 92);
+  ctx.fillStyle = acento ? PAPEL : TINTA; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, 0, 28);
+  ctx.restore();
+}
+// paneles de comparación
+function paneles(t, t0) {
+  const p = e(k(t, t0, 0.4));
+  P.linea(540, 430, 540, 430 + 760 * p, 1, 2);
+  ctx.save(); ctx.globalAlpha = p; ctx.font = '800 48px "DM Sans"'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = TINTA; ctx.fillText('✕  Barato', 110, 470);
+  ctx.fillStyle = AZUL; ctx.fillText('✓  Calidad', 620, 470);
+  ctx.restore();
+}
+// ---------- piezas comparadas ----------
+function rueda(cx, cy, R, buena, t, prog) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.translate(cx, cy);
+  // riel
+  P.negro(P.rect(-R * 1.6, R + 4, R * 3.2, 14), prog);
+  if (buena) {
+    const ang = t * 4;
+    P.rayar(P.anillo(0, 0, R * 0.72, R), -0.6, 7, { prog, semilla: 3 });
+    P.contorno(P.circ(0, 0, R), { prog, ancho: 5 });
+    P.contorno(P.circ(0, 0, R * 0.72), { prog, ancho: 3 });
+    P.contorno(P.circ(0, 0, R * 0.42), { prog, ancho: 3, color: AZUL });
+    for (let i = 0; i < 9; i++) { const a = ang + i / 9 * Math.PI * 2; P.negro(P.circ(Math.cos(a) * R * 0.57, Math.sin(a) * R * 0.57, R * 0.1 * prog), 1, { color: AZUL }); }
+    P.negro(P.circ(0, 0, R * 0.16), prog, { color: AZUL });
+    for (let i = 0; i < 3; i++) P.linea(-R * 1.9 - i * 30, -R * 0.3 + i * 22, -R * 1.25 - i * 30, -R * 0.3 + i * 22, prog, 2.5, AZUL); // líneas de velocidad
+  } else {
+    const tr = Math.sin(t * 22) * 4 * (Math.sin(t * 3) > 0.3 ? 1 : 0); // se traba a los tirones
+    ctx.translate(tr, 0); ctx.rotate(Math.floor(t * 2) * 0.35);
+    const poli = c => { for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, r = R * (i % 3 === 0 ? 0.84 : 1); i ? c.lineTo(Math.cos(a) * r, Math.sin(a) * r) : c.moveTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); };
+    P.papel(poli); P.rayar(poli, 0.7, 9, { prog, semilla: 5 }); P.contorno(poli, { prog, ancho: 5 });
+    P.negro(P.circ(0, 0, R * 0.22), prog);
+  }
+  ctx.restore();
+}
+function burlete(cx, cy, s, buena, t, prog) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.translate(cx, cy);
+  // sol (línea) arriba
+  P.contorno(P.circ(0, -s * 1.85, s * 0.28), { prog, ancho: 3 });
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; P.linea(Math.cos(a) * s * 0.4, -s * 1.85 + Math.sin(a) * s * 0.4, Math.cos(a) * s * 0.55, -s * 1.85 + Math.sin(a) * s * 0.55, prog, 3); }
+  // base de anclaje en negro
+  P.negro(P.rect(-s * 0.55, s * 0.55, s * 1.1, s * 0.25), prog); P.negro(P.rect(-s * 0.15, s * 0.25, s * 0.3, s * 0.35), prog);
+  // la hoja que aprieta (placa) y el bulbo
+  const ap = buena ? (Math.sin(t * 2.4) * 0.5 + 0.5) : 1;
+  const sy = buena ? 1 - 0.3 * ap : 0.55, top = -s * 0.75 * sy;
+  P.negro(P.rect(-s * 1.1, s * 0.25 - s * sy - s * 0.2, s * 2.2, s * 0.2), prog); // placa apoyada sobre el bulbo
+  const bulbo = c => c.ellipse(0, s * 0.25 - s * 0.5 * sy, s * 0.55 * (buena ? 1 + 0.15 * ap : 1.25), s * 0.5 * sy, 0, 0, Math.PI * 2);
+  P.papel(bulbo);
+  if (buena) { P.rayar(bulbo, 0.8, 8, { prog, color: AZUL, semilla: 7 }); P.contorno(bulbo, { prog, ancho: 4, color: AZUL }); }
+  else {
+    P.rayar(bulbo, 0.8, 5, { prog, semilla: 8 }); P.contorno(bulbo, { prog, ancho: 4 });
+    // grietas
+    for (const [x, y] of [[-0.3, 0.05], [0.1, 0.1], [0.35, 0.0]]) { ctx.save(); ctx.strokeStyle = PAPEL; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(x * s, (y - 0.2) * s); ctx.lineTo((x + 0.06) * s, y * s); ctx.lineTo((x - 0.03) * s, (y + 0.14) * s); ctx.globalAlpha = prog; ctx.stroke(); ctx.restore(); }
+  }
+  ctx.restore();
+}
+function felpa(cx, cy, buena, t, prog) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.translate(cx, cy);
+  P.negro(P.rect(-30, 60, 60, 18), prog);
+  for (let i = 0; i < 14; i++) { const x = -26 + i * 4; P.linea(x, 60, x + Math.sin(t * 3 + i) * 2, -70, prog, 2); }
+  if (buena) P.negro(P.rect(-3, -95, 6, 158), prog, { color: AZUL, dir: 'y' });
+  // aire y polvo: puntos que vienen desde la izquierda
+  for (let i = 0; i < 14; i++) {
+    const f = ((t * 0.7 + i / 14) % 1), y = -60 + (i * 37) % 120;
+    let x = -300 + f * 600;
+    if (buena && x > -40) x = -40 - (i % 4) * 9;          // se frenan contra la aleta
+    if (buena && f > 0.9) continue;
+    const a = buena ? 1 : (x > -30 && x < 30 ? 0.6 : 1);
+    ctx.save(); ctx.globalAlpha = prog * a; ctx.fillStyle = TINTA; ctx.beginPath(); ctx.arc(x, y, 5 + (i % 3) * 2, 0, 7); ctx.fill(); ctx.restore();
+  }
+  ctx.restore();
+}
+function tornillo(cx, cy, buena, t, prog) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.translate(cx, cy); ctx.rotate(-0.35);
+  const cab = c => c.ellipse(0, -150, 70, 26, 0, 0, Math.PI * 2);
+  const cuerpo = c => { c.moveTo(-26, -140); c.lineTo(26, -140); c.lineTo(26, 120); c.lineTo(0, 170); c.lineTo(-26, 120); c.closePath(); };
+  P.papel(cuerpo); P.contorno(cuerpo, { prog, ancho: 4, color: buena ? AZUL : TINTA });
+  for (let i = 0; i < 11; i++) P.linea(-26, -120 + i * 24, 26, -108 + i * 24, prog, 3, buena ? AZUL : TINTA);
+  P.papel(cab); P.contorno(cab, { prog, ancho: 4, color: buena ? AZUL : TINTA });
+  P.linea(-36, -150, 36, -150, prog, 5, buena ? AZUL : TINTA);
+  if (buena) { const g = 0.5 + 0.5 * Math.sin(t * 5); P.linea(40, -200 - g * 10, 60, -230 - g * 10, prog, 3, AZUL); P.linea(70, -180, 100, -190, prog, 3, AZUL); }
+  else for (const [x, y, r] of [[-10, -60, 22], [12, 30, 18], [-14, 90, 14], [20, -150, 20]]) { P.negro(c => c.ellipse(x, y, r, r * 0.7, 0.5, 0, Math.PI * 2), prog); P.rayar(P.circ(x + 14, y + 10, r * 1.4), 0.6, 6, { prog, semilla: x }); }
+  ctx.restore();
+}
+
+// ---------- tomas ----------
+function tomaIntro(t) { // dos ventanas iguales, precios, ¿por qué?
+  ctx.save(); camara(t, 0, F(3), 0.06, -30);
+  P.rayar(P.rect(0, 1180, W, 120), 0.06, 26, { prog: e(k(t, 0.2, 0.9)), semilla: 51, curva: 90, ancho: 1.6 });
+  P.ventana(90, 680, 400, 420, 0, t, { sem: 1 });
+  P.ventana(590, 680, 400, 420, 0.25, t, { sem: 2 });
+  precio(290, 1135, '$', k(t, F(1) + 0.2, 0.5), false);
+  precio(790, 1135, '$$$', k(t, F(1) + 0.5, 0.5), true);
+  ctx.restore();
+  const q = rebote(k(t, F(2), 0.4));
+  if (q > 0) { ctx.save(); ctx.translate(540, 880); ctx.scale(q, q); ctx.fillStyle = AZUL; ctx.font = '800 260px "DM Sans"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('?', 0, 0); ctx.restore(); }
+  if (t < F(1)) titular(ctx, [['Dos ventanas', 0], ['iguales…', 1]], t, 0.1);
+  else titular(ctx, [['¿Por qué una', 0], ['cuesta más?', 1]], t, F(1));
+}
+function tomaAccesorios(t) { // lo que no se ve: despiece
+  const t0 = F(3);
+  ctx.save(); camara(t, t0, F(4), 0.07, 30);
+  const r = P.ventana(240, 640, 600, 520, t0 - 1.0, t, { sem: 3, abre: 160 * e(k(t, t0 + 0.3, 0.8)) });
+  const items = [['ruedas', r.ruedaX, r.ruedaY, 220, 1190], ['burletes', 240, 800, 120, 560], ['felpas', 840, 900, 880, 560], ['tornillos', 840, 1160, 870, 1190]];
+  items.forEach(([txt, x, y, lx, ly], i) => {
+    const p = e(k(t, t0 + 0.5 + i * 0.2, 0.4));
+    if (p <= 0) return;
+    P.negro(P.circ(x, y, 14 * p), 1, { color: AZUL });
+    ctx.save(); ctx.setLineDash([10, 8]); P.linea(x, y, lx, ly, p, 3, AZUL); ctx.restore();
+    ctx.save(); ctx.globalAlpha = p; ctx.font = '800 44px "DM Sans"'; const tw = ctx.measureText(txt).width + 40;
+    ctx.fillStyle = AZUL; ctx.fillRect(lx - tw / 2, ly - 34, tw, 64); ctx.fillStyle = PAPEL; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, lx, ly);
+    ctx.restore();
+  });
+  ctx.restore();
+  titular(ctx, [['Lo que', 0], ['no se ve', 1]], t, t0);
+}
+function tomaRuedas(t) {
+  const t0 = F(4);
+  paneles(t, t0);
+  ctx.save(); camara(t, t0, F(6), 0.04, 0);
+  rueda(800, 820, 150, true, t, e(k(t, t0 + 0.3, 0.8)));
+  rueda(280, 820, 150, false, t, e(k(t, F(5), 0.8)));
+  ctx.restore();
+  titular(ctx, [['Las', 0], ['ruedas', 1]], t, t0, { y: 230 });
+}
+function tomaBurletes(t) {
+  const t0 = F(6);
+  paneles(t, t0);
+  ctx.save(); camara(t, t0, F(8), 0.04, 0);
+  burlete(800, 930, 170, true, t, e(k(t, t0 + 0.4, 0.8)));
+  burlete(280, 930, 170, false, t, e(k(t, F(7), 0.8)));
+  ctx.restore();
+  ctx.save(); ctx.font = '700 40px "DM Sans"'; ctx.textAlign = 'center';
+  ctx.globalAlpha = k(t, t0 + 1.2, 0.4); ctx.fillStyle = AZUL; ctx.fillText('EPDM', 800, 1130);
+  ctx.globalAlpha = k(t, F(7) + 0.6, 0.4); ctx.fillStyle = TINTA; ctx.fillText('reseco', 280, 1130); ctx.restore();
+  titular(ctx, [['Los', 0], ['burletes', 1]], t, t0, { y: 230 });
+}
+function tomaFelpas(t) {
+  const t0 = F(8);
+  paneles(t, t0);
+  ctx.save(); camara(t, t0, F(9), 0.04, 0);
+  felpa(800, 840, true, t, e(k(t, t0 + 0.2, 0.6)));
+  felpa(280, 840, false, t, e(k(t, t0 + 0.4, 0.6)));
+  ctx.restore();
+  ctx.save(); ctx.font = '700 40px "DM Sans"'; ctx.textAlign = 'center';
+  ctx.globalAlpha = k(t, t0 + 1.0, 0.4); ctx.fillStyle = AZUL; ctx.fillText('con aleta', 800, 1060);
+  ctx.fillStyle = TINTA; ctx.fillText('común', 280, 1060); ctx.restore();
+  titular(ctx, [['Las', 0], ['felpas', 1]], t, t0, { y: 230 });
+}
+function tomaTornillos(t) {
+  const t0 = F(9);
+  paneles(t, t0);
+  ctx.save(); camara(t, t0, F(10), 0.04, 0);
+  tornillo(800, 860, true, t, e(k(t, t0 + 0.2, 0.6)));
+  tornillo(280, 860, false, t, e(k(t, t0 + 0.4, 0.6)));
+  ctx.restore();
+  ctx.save(); ctx.font = '700 40px "DM Sans"'; ctx.textAlign = 'center';
+  ctx.globalAlpha = k(t, t0 + 1.0, 0.4); ctx.fillStyle = AZUL; ctx.fillText('inoxidable', 800, 1120);
+  ctx.fillStyle = TINTA; ctx.fillText('zincado', 280, 1120); ctx.restore();
+  titular(ctx, [['Los', 0], ['tornillos', 1]], t, t0, { y: 230 });
+}
+function tomaCierre(t) {
+  const t0 = F(10);
+  ctx.save(); camara(t, t0, DUR, 0.05, -20);
+  P.ventana(560, 620, 440, 460, t0 - 0.2, t, { sem: 5 });
+  ctx.restore();
+  // checklist en papel con borde de tinta
+  const c = e(k(t, t0 + 0.6, 0.4));
+  ctx.save(); ctx.globalAlpha = c;
+  ctx.fillStyle = PAPEL; ctx.fillRect(70, 620, 560, 460); ctx.strokeStyle = TINTA; ctx.lineWidth = 4; ctx.strokeRect(70, 620, 560, 460);
+  ['Ruedas con rulemán', 'Burletes de EPDM', 'Felpas con aleta', 'Tornillos inoxidables'].forEach((txt, i) => {
+    const p = e(k(t, t0 + 1.2 + i * 0.35, 0.3));
+    tilde(ctx, 130, 700 + i * 105, 28, p);
+    ctx.font = '700 38px "DM Sans"'; ctx.fillStyle = TINTA; ctx.textBaseline = 'middle'; ctx.fillText(txt, 180, 702 + i * 105);
+  });
+  ctx.restore();
+  titular(ctx, [['Preguntá qué', 0], ['accesorios lleva', 1]], t, t0);
+}
+
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); P.fondo();
+  const cortes = [0, F(3), F(4), F(6), F(8), F(9), F(10)], idx = cortes.filter(c => t >= c).length - 1;
+  [tomaIntro, tomaAccesorios, tomaRuedas, tomaBurletes, tomaFelpas, tomaTornillos, tomaCierre][idx](t);
+  const fl = 1 - k(t, cortes[idx], 0.16);
+  if (idx > 0 && fl > 0) { ctx.fillStyle = `rgba(232,227,214,${fl * 0.8})`; ctx.fillRect(0, 0, W, H); }
+  marca(ctx);
+  dibujarSub(ctx, SUBS, t, ['iguales', 'cara', 'qué', 'accesorios', 'ruedas', 'rulemán', 'plástico', 'burletes', 'epdm', 'elásticos', 'baratos', 'felpas', 'aleta', 'tornillos', 'inoxidable', 'precios', 'EPDM']);
+}
+window.ready = init().then(() => document.fonts.load('800 96px "DM Sans"')).then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
+</script></body></html>

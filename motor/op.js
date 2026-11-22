@@ -42,7 +42,7 @@ export function subtitulos(tiempos) {
     const pal = mostrar(txt).replace(/(\d[\d,]*) m\b/g, '$1_m').replace(/[¿?:.!¡]|,(?!\d)/g, ' ').toLowerCase().split(/\s+/).filter(Boolean);
     const grupos = []; for (let i = 0; i < pal.length;) { let n = pal.length - i === 5 ? 3 : Math.min(4, pal.length - i); while (n > 2 && pal.slice(i, i + n).join(' ').length > 24) n--; grupos.push(pal.slice(i, i + n)); i += n; }
     const tot = grupos.reduce((s, g) => s + g.join(' ').length, 0); let t = a;
-    for (const g of grupos) { const d = (b - a) * g.join(' ').length / tot; out.push([t, t + d, g.join(' ').replace(/_/g, ' ')]); t += d; }
+    for (const g of grupos) { const d = (b - a) * g.join(' ').length / tot; out.push([t, t + d, g.join(' ').replace(/_/g, ' ').replace(/\bepdm\b/g, 'EPDM').replace(/\bop\b/g, 'OP')]); t += d; }
   }
   return out;
 }
@@ -58,8 +58,8 @@ export function dibujarSub(ctx, subs, t, resaltar = []) {
   ctx.globalAlpha = pop;
   const pal = s[2].split(' ');
   const dib = (fn) => { let cx = x0; for (const p of pal) { fn(p, cx); cx += ctx.measureText(p + ' ').width; } };
-  ctx.shadowColor = 'rgba(255,255,255,0.95)'; ctx.shadowBlur = 28;
-  ctx.strokeStyle = 'rgba(255,255,255,0.92)'; ctx.lineWidth = 16;
+  ctx.shadowColor = PAL.halo || 'rgba(255,255,255,0.95)'; ctx.shadowBlur = 28;
+  ctx.strokeStyle = PAL.halo || 'rgba(255,255,255,0.92)'; ctx.lineWidth = 16;
   dib((p, cx) => ctx.strokeText(p, cx, y));
   ctx.shadowBlur = 0;
   dib((p, cx) => { ctx.fillStyle = resaltar.some(r => p.includes(r)) ? rgb(PAL.acento) : PAL.tinta; ctx.fillText(p, cx, y); });
