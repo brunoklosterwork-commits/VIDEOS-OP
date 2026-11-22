@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+// Prueba de estilo "boceto a tinta": trazos sueltos que se pasan de largo, garabatos para las sombras,
+// manchitas de tinta y un solo color de acento (acuarela azul).
+const W = 1080, H = 1920, cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const PAPEL = '#f3e9d2', TINTA = '#1c1b22', AZUL = 'rgba(36,86,214,0.55)';
+const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+const k = (t, a, d) => Math.max(0, Math.min(1, (t - a) / d));
+let SEM = 1; const r = () => { const x = Math.sin(SEM++ * 91.37) * 43758.5453; return x - Math.floor(x); };
+const j = (a) => (r() - 0.5) * 2 * a;
+
+// trazo a mano: sobrepasa los extremos, se curva un poco, grosor variable; prog lo va dibujando
+function trazo(x1, y1, x2, y2, prog = 1, { g = 3, pasadas = 2, sobra = 14, temblor = 3 } = {}) {
+  if (prog <= 0) return;
+  const L = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / L, uy = (y2 - y1) / L;
+  for (let p = 0; p < pasadas; p++) {
+    const s1 = sobra * (0.3 + r()), s2 = sobra * (0.3 + r());
+    const ax = x1 - ux * s1 + j(temblor), ay = y1 - uy * s1 + j(temblor);
+    const bx = x2 + ux * s2 + j(temblor), by = y2 + uy * s2 + j(temblor);
+    const mx = (ax + bx) / 2 - uy * j(L * 0.02), my = (ay + by) / 2 + ux * j(L * 0.02);
+    const segs = 14; ctx.strokeStyle = TINTA; ctx.lineCap = 'round';
+    for (let i = 0; i < segs * prog; i++) {
+      const t0 = i / segs, t1 = Math.min(prog, (i + 1) / segs);
+      const q = (t) => [(1 - t) * (1 - t) * ax + 2 * (1 - t) * t * mx + t * t * bx, (1 - t) * (1 - t) * ay + 2 * (1 - t) * t * my + t * t * by];
+      const [xa, ya] = q(t0), [xb, yb] = q(t1);
+      ctx.lineWidth = g * (p ? 0.55 : 1) * (0.6 + 0.8 * Math.sin(Math.PI * (t0 + 0.05)));
+      ctx.beginPath(); ctx.moveTo(xa, ya); ctx.lineTo(xb, yb); ctx.stroke();
+    }
+  }
+}
+function caja(x, y, w, h, prog, o) { // rectángulo bocetado (4 trazos que se escalonan)
+  const s = SEM;
+  trazo(x, y, x + w, y, k(prog, 0, 0.3), o); trazo(x + w, y, x + w, y + h, k(prog, 0.25, 0.3), o);
+  trazo(x + w, y + h, x, y + h, k(prog, 0.5, 0.3), o); trazo(x, y + h, x, y, k(prog, 0.75, 0.25), o);
+}
+// garabato de sombra: zigzag denso dentro de una forma
+function garabato(forma, prog, { ang = -0.5, sep = 9, g = 2.6 } = {}) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.beginPath(); forma(ctx); ctx.clip();
+  ctx.strokeStyle = TINTA; ctx.lineWidth = g; ctx.lineJoin = 'round';
+  const c = Math.cos(ang), s = Math.sin(ang), n = 260;
+  ctx.beginPath();
+  for (let i = 0; i < n * prog; i++) {
+    const d = -1300 + i * sep, L = 1400, sg = i % 2 ? 1 : -1;
+    const x = W / 2 - s * d + c * L * sg + j(30), y = H / 2 + c * d + s * L * sg + j(30);
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function manchas(x, y, w, h, n, prog) {
+  ctx.fillStyle = TINTA;
+  for (let i = 0; i < n * prog; i++) { ctx.beginPath(); ctx.arc(x + r() * w, y + r() * h, 1.5 + r() * 4, 0, 7); ctx.fill(); }
+}
+function acuarela(x, y, w, h, prog) { // manchas translúcidas de borde orgánico, recortadas al vano
+  if (prog <= 0) return;
+  ctx.save();
+  for (let m = 0; m < 4; m++) {
+    const cx = x + w * (0.35 + r() * 0.3), cy = y + h * (0.35 + r() * 0.3), rx = w * (0.26 + r() * 0.1), ry = h * (0.28 + r() * 0.1);
+    const f1 = r() * 6, f2 = r() * 6, pts = [];
+    for (let a = 0; a < 48; a++) {
+      const an = a / 48 * Math.PI * 2, f = 1 + 0.12 * Math.sin(an * 3 + f1) + 0.07 * Math.sin(an * 7 + f2);
+      pts.push([cx + Math.cos(an) * rx * f, cy + Math.sin(an) * ry * f]);
+    }
+    ctx.beginPath();
+    pts.forEach((p, i) => { const q = pts[(i + 1) % pts.length], mx = (p[0] + q[0]) / 2, my = (p[1] + q[1]) / 2; i ? ctx.quadraticCurveTo(p[0], p[1], mx, my) : ctx.moveTo(mx, my); });
+    ctx.closePath(); ctx.globalCompositeOperation = 'multiply'; ctx.globalAlpha = 0.42 * prog; ctx.fillStyle = '#6d93f2'; ctx.fill();
+  }
+  ctx.restore();
+}
+
+function draw(t) {
+  SEM = 1;
+  ctx.fillStyle = PAPEL; ctx.fillRect(0, 0, W, H);
+  // fachada
+  trazo(120, 420, 120, 1330, ease(k(t, 0.0, 0.6)), { g: 4 });
+  trazo(960, 420, 960, 1330, ease(k(t, 0.1, 0.6)), { g: 3 });
+  trazo(40, 1330, 1040, 1320, ease(k(t, 0.2, 0.7)), { g: 4.5, sobra: 30 });
+  // toldo
+  const toldo = c => { c.moveTo(130, 520); c.lineTo(950, 470); c.lineTo(1010, 610); c.lineTo(80, 650); c.closePath(); };
+  trazo(130, 520, 950, 470, ease(k(t, 0.3, 0.5)), { g: 4 }); trazo(80, 650, 1010, 610, ease(k(t, 0.4, 0.5)), { g: 4 });
+  trazo(130, 520, 80, 650, ease(k(t, 0.5, 0.3))); trazo(950, 470, 1010, 610, ease(k(t, 0.5, 0.3)));
+  garabato(toldo, ease(k(t, 0.7, 0.8)), { ang: -0.15, sep: 7, g: 3 });
+  // ventana de aluminio (dos hojas)
+  const VX = 210, VY = 760, VW = 660, VH = 440, mp = ease(k(t, 1.0, 0.9));
+  acuarela(VX - 10, VY - 10, VW + 20, VH + 20, ease(k(t, 2.0, 0.5)));
+  caja(VX, VY, VW, VH, mp, { g: 4.5 });
+  const abre = ease(k(t, 2.5, 1.0)) * 180;
+  caja(VX + 18, VY + 18, VW / 2, VH - 36, mp, { g: 3 });
+  caja(VX + VW / 2 - 18 - abre, VY + 18, VW / 2, VH - 36, mp, { g: 3.5 });
+  // reflejos del vidrio: tres rayitas rápidas
+  for (const [x, y] of [[VX + 90, VY + 120], [VX + 120, VY + 110], [VX + 420 - abre, VY + 150]])
+    trazo(x, y + 90, x + 60, y, ease(k(t, 1.8, 0.3)), { g: 2, pasadas: 1, sobra: 4 });
+  // sombra bajo el alféizar
+  garabato(c => c.rect(VX - 30, VY + VH + 14, VW + 60, 30), ease(k(t, 1.6, 0.5)), { ang: 1.45, sep: 7, g: 2.2 });
+  // ladrillos sueltos en la pared
+  for (const [x, y] of [[170, 720], [230, 700], [900, 760], [930, 900], [160, 1000], [150, 1220], [880, 1050]]) {
+    trazo(x, y, x + 50, y + j(3), ease(k(t, 0.9, 0.3)), { g: 2, pasadas: 1, sobra: 3 });
+    trazo(x + 10, y + 22, x + 58, y + 22 + j(3), ease(k(t, 1.0, 0.3)), { g: 1.6, pasadas: 1, sobra: 3 });
+  }
+  trazo(VX - 40, VY + VH + 12, VX + VW + 40, VY + VH + 8, mp, { g: 4 });
+  // maceta con planta a la derecha
+  caja(860, 1180, 90, 140, ease(k(t, 1.2, 0.6)), { g: 3 });
+  for (let i = 0; i < 7; i++) trazo(905, 1180, 860 + i * 18 + j(10), 1040 + j(30), ease(k(t, 1.5 + i * 0.05, 0.4)), { g: 2.2, pasadas: 1 });
+  manchas(60, 1340, 960, 120, 40, ease(k(t, 0.8, 1.2)));
+  // rueda resaltada
+  const q = ease(k(t, 3.5, 0.5));
+  if (q > 0) {
+    const rx = VX + VW / 2 - 18 - abre + VW / 4, ry = VY + VH - 18;
+    ctx.save(); ctx.strokeStyle = TINTA; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.arc(rx, ry, 30, 0, Math.PI * 2 * q); ctx.stroke();
+    ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(rx + 3, ry - 2, 52, 0.3, 0.3 + Math.PI * 2.1 * q); ctx.stroke(); ctx.restore();
+    trazo(rx + 40, ry + 40, rx + 140, ry + 150, q, { g: 2.5, pasadas: 1 });
+    ctx.save(); ctx.globalAlpha = q; ctx.fillStyle = TINTA; ctx.font = 'italic 700 50px "DM Sans"';
+    ctx.fillText('rueda con rulemán', rx + 70, ry + 205); ctx.restore();
+  }
+  // titular
+  const tq = ease(k(t, 0.2, 0.6));
+  ctx.save(); ctx.globalAlpha = tq; ctx.fillStyle = TINTA; ctx.font = '800 92px "DM Sans"';
+  ctx.fillText('Dos ventanas', 80, 200 + (1 - tq) * 30);
+  ctx.fillStyle = '#2456d6'; ctx.fillText('iguales…', 80, 300 + (1 - tq) * 30);
+  ctx.restore();
+}
+window.ready = document.fonts.load('800 92px "DM Sans"').then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
+</script></body></html>
