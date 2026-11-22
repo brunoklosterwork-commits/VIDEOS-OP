@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+// Prueba de estilo "plumilla": todo se dibuja con líneas paralelas que se trazan en vivo.
+const W = 1080, H = 1920, cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const PAPEL = '#e8e3d6', TINTA = '#2a2826', AZUL = '#2456d6';
+const ease = t => t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t);
+const k = (t, a, d) => Math.max(0, Math.min(1, (t - a) / d));
+function rnd(s) { const x = Math.sin(s * 127.1) * 43758.5453; return x - Math.floor(x); }
+
+// rayado: líneas paralelas a 'ang' dentro de 'forma' (función que arma el path); prog 0..1 las va trazando
+function rayar(forma, ang, sep, { prog = 1, ancho = 2.2, color = TINTA, semilla = 1, curva = 0 } = {}) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.beginPath(); forma(ctx); ctx.clip();
+  const c = Math.cos(ang), s = Math.sin(ang), L = 2400, n = Math.ceil(2400 / sep);
+  ctx.strokeStyle = color; ctx.lineWidth = ancho; ctx.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const p = Math.max(0, Math.min(1, prog * 1.6 - (i / n) * 0.6)); // escalonado
+    if (p <= 0) continue;
+    const d = -1200 + i * sep + (rnd(i + semilla) - 0.5) * sep * 0.25;
+    const cx = W / 2 - s * d, cy = H / 2 + c * d;
+    const x0 = cx - c * L / 2, y0 = cy - s * L / 2;
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    if (curva) ctx.quadraticCurveTo(cx + s * curva, cy - c * curva, x0 + c * L * p, y0 + s * L * p);
+    else ctx.lineTo(x0 + c * L * p, y0 + s * L * p);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+function contorno(forma, { prog = 1, ancho = 4, color = TINTA } = {}) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.beginPath(); forma(ctx); ctx.strokeStyle = color; ctx.lineWidth = ancho; ctx.lineJoin = 'round';
+  ctx.setLineDash([4000 * prog, 4000]); ctx.stroke(); ctx.restore();
+}
+const rect = (x, y, w, h) => c => c.rect(x, y, w, h);
+
+// negro pleno que "se pinta" con un barrido (wipe) en la dirección del trazo
+function negro(forma, prog, { dir = 'x' } = {}) {
+  if (prog <= 0) return;
+  ctx.save(); ctx.beginPath(); forma(ctx); ctx.clip();
+  ctx.fillStyle = TINTA;
+  if (dir === 'x') ctx.fillRect(0, 0, W * prog, H); else ctx.fillRect(0, 0, W, H * prog);
+  ctx.restore();
+}
+
+function draw(t) {
+  ctx.fillStyle = PAPEL; ctx.fillRect(0, 0, W, H);
+  // cielo: casi vacío, solo unas horizontales cerca del horizonte
+  rayar(rect(140, 470, W, 90), 0, 16, { prog: ease(k(t, 0, 0.8)), ancho: 1.4, semilla: 3 });
+  // pared: papel limpio; rayado diagonal solo en la franja derecha (lado en sombra)
+  contorno(rect(90, 560, 900, 760), { prog: ease(k(t, 0.1, 0.8)), ancho: 3 });
+  rayar(c => c.rect(780, 560, 210, 760), -0.62, 13, { prog: ease(k(t, 0.4, 0.8)), semilla: 7 });
+  // alero en negro pleno sobre la ventana
+  const VX = 190, VY = 680, VW = 700, VH = 480;
+  negro(c => { c.moveTo(VX - 60, VY - 70); c.lineTo(VX + VW + 60, VY - 70); c.lineTo(VX + VW + 30, VY - 30); c.lineTo(VX - 30, VY - 30); c.closePath(); }, ease(k(t, 0.5, 0.5)));
+  // sombra que proyecta el alero: rayado corto y denso
+  rayar(c => c.rect(VX - 30, VY - 30, VW + 60, 26), Math.PI / 2, 6, { prog: ease(k(t, 0.8, 0.4)), semilla: 9 });
+  // vano: interior en negro pleno (se ve en el borde superior e izquierdo)
+  ctx.fillStyle = PAPEL; ctx.fillRect(VX, VY, VW, VH);
+  negro(c => { c.moveTo(VX, VY); c.lineTo(VX + VW, VY); c.lineTo(VX + VW - 30, VY + 30); c.lineTo(VX + 30, VY + 30); c.lineTo(VX + 30, VY + VH - 30); c.lineTo(VX, VY + VH); c.closePath(); }, ease(k(t, 0.8, 0.5)), { dir: 'y' });
+  // marco y hojas de aluminio: contorno limpio
+  const mp = ease(k(t, 1.0, 0.8));
+  contorno(rect(VX + 30, VY + 30, VW - 60, VH - 60), { prog: mp, ancho: 6 });
+  const abre = ease(k(t, 2.4, 1.2)) * 200;
+  const HY = VY + 44, HH = VH - 88, HW = (VW - 88) / 2 + 20;
+  for (const [x, sem] of [[VX + 44, 21], [VX + 44 + HW - 40 - abre, 33]]) {
+    if (mp > 0.3) { ctx.fillStyle = PAPEL; ctx.fillRect(x, HY, HW, HH); }
+    contorno(c => c.rect(x, HY, HW, HH), { prog: mp, ancho: 5 });
+    contorno(c => c.rect(x + 16, HY + 16, HW - 32, HH - 32), { prog: mp, ancho: 2 });
+    // vidrio: casi vacío, tres reflejos diagonales
+    for (let i = 0; i < 3; i++) {
+      const q = ease(k(t, 1.6 + i * 0.08, 0.3)), x0 = x + 50 + i * 22, y0 = HY + HH - 60;
+      if (q > 0) { ctx.save(); ctx.strokeStyle = TINTA; ctx.lineWidth = i === 1 ? 3 : 1.6; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 90 * q, y0 - 160 * q); ctx.stroke(); ctx.restore(); }
+    }
+  }
+  // alféizar: barra en negro
+  negro(c => c.rect(VX - 40, VY + VH, VW + 80, 22), ease(k(t, 1.2, 0.4)));
+  // rueda (accesorio) en azul
+  const r = ease(k(t, 3.4, 0.5));
+  if (r > 0) {
+    const rx = VX + 44 + HW - 40 - abre + HW / 2, ry = HY + HH + 2;
+    ctx.save(); ctx.strokeStyle = AZUL; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(rx, ry, 70 * r, 0, Math.PI * 2 * r); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.fillStyle = AZUL; ctx.beginPath(); ctx.arc(rx, ry, 30 * r, 0, 7); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.globalAlpha = k(t, 3.7, 0.3); ctx.font = '700 44px "DM Sans"';
+    const tx = 'rueda con rulemán', tw = ctx.measureText(tx).width;
+    ctx.fillStyle = AZUL; ctx.fillRect(rx - tw / 2 - 24, ry + 110, tw + 48, 70);
+    ctx.fillStyle = PAPEL; ctx.textAlign = 'center'; ctx.fillText(tx, rx, ry + 160); ctx.restore();
+  }
+  // piso: pocas curvas, más separadas
+  rayar(rect(0, 1320, W, 200), 0.08, 30, { prog: ease(k(t, 0.5, 1.0)), semilla: 51, curva: 140, ancho: 1.8 });
+  // ciprés: lado de luz rayado, lado de sombra en negro
+  const cipres = c => c.ellipse(70, 820, 70, 420, 0, 0, 7);
+  ctx.fillStyle = PAPEL; ctx.beginPath(); cipres(ctx); ctx.fill();
+  rayar(cipres, Math.PI / 2, 12, { prog: ease(k(t, 0.6, 0.8)), semilla: 61 });
+  ctx.save(); ctx.beginPath(); ctx.rect(78, 0, 200, H); ctx.clip();
+  negro(c => { c.ellipse(70, 820, 70, 420, 0, 0, 7); }, ease(k(t, 1.1, 0.5)), { dir: 'y' });
+  ctx.restore();
+  contorno(cipres, { prog: ease(k(t, 0.6, 0.6)), ancho: 3 });
+  // el piso se desvanece hacia abajo
+  const fade = ctx.createLinearGradient(0, 1400, 0, 1540); fade.addColorStop(0, 'rgba(232,227,214,0)'); fade.addColorStop(1, PAPEL);
+  ctx.fillStyle = fade; ctx.fillRect(0, 1400, W, 140);
+  // titular
+  const q = ease(k(t, 0.2, 0.6));
+  ctx.save(); ctx.globalAlpha = q; ctx.fillStyle = TINTA; ctx.font = '800 92px "DM Sans"';
+  ctx.fillText('Dos ventanas', 80, 200 + (1 - q) * 30);
+  ctx.fillStyle = AZUL; ctx.fillText('iguales…', 80, 300 + (1 - q) * 30);
+  ctx.restore();
+}
+window.ready = document.fonts.load('800 92px "DM Sans"').then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
+</script></body></html>
