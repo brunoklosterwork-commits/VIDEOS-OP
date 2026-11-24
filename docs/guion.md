@@ -21,3 +21,9 @@ La voz en off le habla a una sola persona, como en una charla de mostrador o un 
 - 3–10 s: por qué quedarte (promesa o misterio que se cierra al final).
 - Filtro: todos lo vivieron · pregunta < 10 palabras · giro en la 2.ª frase · se puede dibujar · tiene analogía cotidiana.
 - Texto del post: máximo 5 hashtags, siempre #opsistemas.
+
+## Reglas fijas de los videos educativos (24/11/2026)
+- **Duración máxima 30 s; si sale en menos, mejor.** Guion de ~65–75 palabras. Con voces pausadas de ElevenLabs, apuntar a ~65.
+- **Si planteamos un problema, siempre lo resolvemos** en el mismo video, con una acción concreta que la persona pueda hacer.
+- **CTA por defecto: "Guardá este video…"** (contenido educativo = se guarda).
+- **Al final, siempre aparece un ícono de "me gusta"** que se anima (corazón en plumilla que se llena de azul), además del CTA.
