@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+import { crear, PAPEL, TINTA, AZUL, W, H } from '../../motor/plumilla.js';
+import { PAL, ease, easeOut, rebote, k, cargarTiempos, subtitulos, dibujarSub, marca, titular } from '../../motor/op.js';
+
+const cv = document.getElementById('c'), ctx = cv.getContext('2d'), P = crear(ctx);
+PAL.tinta = TINTA; PAL.tintaSuave = '#6f6a62'; PAL.halo = PAPEL; PAL.acento = [36, 86, 214]; PAL.acentoClaro = [36, 86, 214];
+let T, SUBS, F, E, DUR;
+// momentos finos dentro de las frases (de los silencios del audio)
+const M = { rompiendo: 2.54, aire: 3.96, cocinas: 6.44, banas: 7.35, dormis: 8.05, vapor: 8.78, toca: 10.61, vaso: 13.2,
+  solucion: 15.27, ventila: 16.37, cambias: 18.34, doble: 19.58, tibio: 21.2, casiNo: 23.26, guarda: 24.91 };
+async function init() {
+  const fr = (await (await fetch('frases.txt')).text()).trim().split('\n');
+  T = await cargarTiempos(fr); SUBS = subtitulos(T); F = i => T[i][0]; E = i => T[i][1]; DUR = E(7) + 1.6; window.DUR = DUR;
+}
+const e = ease;
+function rnd(s) { const x = Math.sin(s * 91.7) * 43758.5453; return x - Math.floor(x); }
+function camara(t, t0, t1, zoom = 0.05, dx = 30, piv = [540, 860]) {
+  const p = e(k(t, t0, t1 - t0)), z = 1 + zoom * p;
+  ctx.translate(piv[0] + dx * (p - 0.5), piv[1]); ctx.scale(z, z); ctx.translate(-piv[0], -piv[1]);
+}
+// gota de tinta sobre el vidrio: cuerpo + brillo de papel; 'cae' estira un hilo hacia abajo
+function gota(x, y, r, p, cae = 0, color = TINTA) {
+  if (p <= 0) return;
+  const s = rebote(Math.min(1, p));
+  if (cae > 0) P.linea(x, y, x, y + cae, 1, Math.max(2, r * 0.45), color);
+  ctx.save(); ctx.fillStyle = color; ctx.beginPath(); ctx.ellipse(x, y + cae, r * s * 0.8, r * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = PAPEL; ctx.beginPath(); ctx.arc(x - r * 0.25 * s, y + cae - r * 0.3 * s, r * 0.22 * s, 0, 7); ctx.fill(); ctx.restore();
+}
+// gotas repartidas en un rectángulo; 'cuantas' 0..1 cuántas se ven; 'seca' 0..1 se van evaporando
+function gotas(x, y, w, h, t, t0, { n = 34, seca = 0, color = TINTA, sem = 1 } = {}) {
+  for (let i = 0; i < n; i++) {
+    const gx = x + 20 + rnd(i * 3 + sem) * (w - 40), gy = y + 20 + rnd(i * 7 + sem) * (h - 60), r = 7 + rnd(i * 11 + sem) * 11;
+    const p = k(t, t0 + i * 0.045, 0.35) * (1 - k(seca, i / n * 0.7, 0.3));
+    const cae = i % 5 === 0 ? Math.min(90, Math.max(0, (t - t0 - 1.2 - i * 0.03) * 40)) : 0;
+    gota(gx, gy, r, p, cae, color);
+  }
+}
+// vapor: línea ondulada que avanza de a a b
+function vapor(a, b, t, t0, { amp = 18, ancho = 3, color = TINTA } = {}) {
+  const p = e(k(t, t0, 1.2));
+  if (p <= 0) return;
+  const L = Math.hypot(b[0] - a[0], b[1] - a[1]), ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L;
+  ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = ancho; ctx.lineCap = 'round'; ctx.beginPath();
+  for (let i = 0; i <= 60 * p; i++) {
+    const s = i / 60 * L, w = Math.sin(s / 34 - t * 5) * amp;
+    const x = a[0] + ux * s - uy * w, y = a[1] + uy * s + ux * w;
+    i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+  }
+  ctx.stroke(); ctx.restore();
+}
+function copo(x, y, r, p) { for (let i = 0; i < 3; i++) { const a = i * Math.PI / 3; P.linea(x - Math.cos(a) * r, y - Math.sin(a) * r, x + Math.cos(a) * r, y + Math.sin(a) * r, p, 3.5); } }
+function pildora(x, y, txt, p, azul = true) {
+  if (p <= 0) return;
+  const s = rebote(p);
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.font = '800 46px "DM Sans"';
+  const tw = ctx.measureText(txt).width + 50;
+  ctx.fillStyle = azul ? AZUL : PAPEL; ctx.fillRect(-tw / 2, -38, tw, 76);
+  if (!azul) { ctx.strokeStyle = TINTA; ctx.lineWidth = 4; ctx.strokeRect(-tw / 2, -38, tw, 76); }
+  ctx.fillStyle = azul ? PAPEL : TINTA; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, 0, 3); ctx.restore();
+}
+
+// ---------- tomas ----------
+function tomaGotas(t) { // gancho: la ventana "llora"
+  ctx.save(); camara(t, 0, M.cocinas, 0.08, -20, [540, 860]);
+  P.rayar(P.rect(0, 1180, W, 110), 0.06, 28, { prog: e(k(t, 0.1, 0.8)), semilla: 3, curva: 80, ancho: 1.6 });
+  P.ventana(170, 560, 740, 600, -0.6, t, { sem: 1 });
+  gotas(220, 610, 640, 500, t, 0.15, { n: 40 });
+  ctx.restore();
+  if (t < M.aire) titular(ctx, [['¿Tu ventana', 0], ['llora?', 1]], t, 0.05);
+  else titular(ctx, [['El problema:', 0], ['el aire', 1]], t, M.aire);
+  pildora(540, 470, 'no está rota', k(t, M.rompiendo + 0.3, 0.4) * (1 - k(t, M.aire, 0.3)), false);
+}
+function tomaVapor(t) { // cocinás, te bañás, dormís -> vapor hacia la ventana
+  const t0 = M.cocinas;
+  ctx.save(); camara(t, t0, M.toca, 0.05, 30);
+  P.ventana(640, 600, 360, 520, t0 - 1, t, { sem: 2 });
+  gotas(670, 640, 300, 420, t, M.vapor + 0.4, { n: 14, sem: 5 });
+  // olla
+  const o = e(k(t, t0, 0.5));
+  if (o > 0) {
+    P.contorno(c => { c.moveTo(90, 610); c.lineTo(90, 700); c.quadraticCurveTo(90, 730, 120, 730); c.lineTo(290, 730); c.quadraticCurveTo(320, 730, 320, 700); c.lineTo(320, 610); }, { prog: o, ancho: 5 });
+    P.negro(P.rect(70, 600, 270, 14), o); P.negro(P.rect(330, 640, 40, 12), o);
+    P.rayar(P.rect(92, 650, 226, 78), -0.7, 9, { prog: o, semilla: 11 });
+    for (let i = 0; i < 3; i++) vapor([140 + i * 60, 590], [640, 760 + i * 40], t, t0 + 0.3 + i * 0.1, { amp: 14 });
+  }
+  // ducha
+  const d = e(k(t, M.banas, 0.5));
+  if (d > 0) {
+    P.negro(c => { c.ellipse(200, 860, 80, 26, 0, 0, Math.PI * 2); }, d); P.linea(200, 834, 200, 790, d, 8); P.linea(200, 790, 320, 790, d, 8);
+    for (let i = 0; i < 7; i++) P.linea(140 + i * 20, 900, 130 + i * 22, 900 + 90 * d, d, 2.5);
+    for (let i = 0; i < 2; i++) vapor([260, 880 + i * 30], [640, 880 + i * 50], t, M.banas + 0.3 + i * 0.1, { amp: 14 });
+  }
+  // dormís: cama y "zzz"
+  const z = e(k(t, M.dormis, 0.5));
+  if (z > 0) {
+    P.contorno(P.rect(80, 1060, 280, 80), { prog: z, ancho: 5 }); P.negro(P.rect(80, 1040, 70, 40), z);
+    P.rayar(P.rect(150, 1062, 208, 76), 0.6, 10, { prog: z, semilla: 21 });
+    ctx.save(); ctx.globalAlpha = z; ctx.fillStyle = TINTA; ctx.font = '800 46px "DM Sans"'; ctx.fillText('z', 300, 1010 - Math.sin(t * 2) * 6); ctx.font = '800 34px "DM Sans"'; ctx.fillText('z', 335, 970 - Math.sin(t * 2 + 1) * 6); ctx.restore();
+    vapor([340, 1040], [640, 1000], t, M.dormis + 0.3, { amp: 14 });
+  }
+  ctx.restore();
+  if (t < M.vapor) titular(ctx, [['Cocinás, te bañás,', 0], ['dormís…', 1]], t, t0);
+  else titular(ctx, [['El aire se carga', 0], ['de vapor', 1]], t, M.vapor);
+}
+function tomaVidrio(t) { // al tocar el vidrio frío, se vuelve agua
+  const t0 = M.toca;
+  ctx.save(); camara(t, t0, M.vaso, 0.06, -20);
+  // vidrio frío de canto (corte), afuera a la derecha
+  P.negro(P.rect(620, 470, 30, 760), e(k(t, t0, 0.4)), { dir: 'y' });
+  P.rayar(P.rect(650, 470, 430, 760), 1.2, 16, { prog: e(k(t, t0 + 0.1, 0.6)), semilla: 31 });
+  copo(860, 620, 50, e(k(t, t0 + 0.3, 0.5)));
+  ctx.save(); ctx.globalAlpha = k(t, t0 + 0.5, 0.4); ctx.fillStyle = PAPEL; ctx.fillRect(760, 700, 200, 70); ctx.fillStyle = TINTA; ctx.font = '800 44px "DM Sans"'; ctx.textAlign = 'center'; ctx.fillText('afuera', 860, 750); ctx.restore();
+  // vapor que llega desde adentro y se convierte en gotas pegadas al vidrio
+  for (let i = 0; i < 6; i++) {
+    const ti = t0 + 0.2 + i * 0.22, y = 560 + i * 110;
+    vapor([90, y - 30], [600, y], t, ti, { amp: 16 });
+    gota(600, y, 16, k(t, ti + 1.1, 0.3), Math.min(70, Math.max(0, (t - ti - 1.6) * 40)));
+  }
+  ctx.restore();
+  titular(ctx, [['Vidrio frío', 0], ['= agua', 1]], t, t0);
+}
+function tomaVaso(t) { // como el vaso de gaseosa que transpira
+  const t0 = M.vaso;
+  ctx.save(); camara(t, t0, M.solucion, 0.07, 20);
+  const p = e(k(t, t0, 0.6));
+  const vaso = c => { c.moveTo(380, 560); c.lineTo(700, 560); c.lineTo(660, 1140); c.lineTo(420, 1140); c.closePath(); };
+  P.rayar(c => { c.moveTo(392, 680); c.lineTo(690, 680); c.lineTo(660, 1130); c.lineTo(420, 1130); c.closePath(); }, Math.PI / 2, 9, { prog: p, semilla: 41 });
+  P.contorno(vaso, { prog: p, ancho: 6 });
+  for (let i = 0; i < 8; i++) { const bx = 450 + rnd(i) * 180, by = 1100 - ((t * 120 + i * 90) % 400); if (p > 0.6) { ctx.save(); ctx.fillStyle = PAPEL; ctx.beginPath(); ctx.arc(bx, by, 7, 0, 7); ctx.fill(); ctx.strokeStyle = TINTA; ctx.lineWidth = 2; ctx.stroke(); ctx.restore(); } }
+  P.negro(P.rect(410, 1140, 260, 14), p); // apoyo
+  gotas(400, 600, 290, 480, t, t0 + 0.4, { n: 16, sem: 9 });
+  ctx.restore();
+  titular(ctx, [['Como el vaso', 0], ['que transpira', 1]], t, t0);
+}
+function tomaVentilar(t) { // solución 1: ventilar 10 minutos
+  const t0 = M.solucion;
+  ctx.save(); camara(t, t0, M.cambias, 0.06, -30);
+  const abre = 220 * e(k(t, M.ventila, 0.8));
+  P.ventana(170, 560, 740, 600, t0 - 1.2, t, { sem: 4, abre });
+  gotas(220, 610, 640, 500, t, t0 - 3, { n: 30, seca: k(t, M.ventila + 0.4, 1.4), sem: 4 });
+  // corriente de aire: curvas que cruzan la ventana
+  for (let i = 0; i < 4; i++) {
+    const q = k(t, M.ventila + 0.3 + i * 0.12, 0.8);
+    if (q <= 0) continue;
+    const y = 700 + i * 110, x0 = 980 - ((t * 260 + i * 140) % 900);
+    ctx.save(); ctx.strokeStyle = AZUL; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.globalAlpha = q;
+    ctx.beginPath(); ctx.moveTo(x0, y); ctx.bezierCurveTo(x0 - 80, y - 30, x0 - 160, y + 30, x0 - 240, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x0 - 240, y); ctx.lineTo(x0 - 214, y - 16); ctx.moveTo(x0 - 240, y); ctx.lineTo(x0 - 214, y + 16); ctx.stroke(); ctx.restore();
+  }
+  ctx.restore();
+  if (t < M.ventila) titular(ctx, [['¿La', 0], ['solución?', 1]], t, t0);
+  else titular(ctx, [['Ventilá', 1], ['10 min por día', 0]], t, M.ventila);
+  pildora(540, 1400, '10 minutos', k(t, M.ventila + 0.5, 0.4) * (1 - k(t, M.cambias - 0.3, 0.2)));
+}
+function tomaDVH(t) { // doble vidrio: el de adentro, tibio y seco
+  const t0 = M.cambias;
+  ctx.save(); camara(t, t0, M.guarda, 0.05, 20);
+  const p = e(k(t, M.doble, 0.6));
+  // marco en corte (perfil Módena estilizado)
+  P.negro(P.rect(380, 470, 320, 40), e(k(t, t0, 0.5))); P.negro(P.rect(380, 1150, 320, 40), e(k(t, t0, 0.5)));
+  // vidrio exterior (frío) y vidrio interior (azul, tibio)
+  P.rayar(P.rect(430, 510, 36, 640), Math.PI / 2, 7, { prog: p, semilla: 51 }); P.contorno(P.rect(430, 510, 36, 640), { prog: p, ancho: 4 });
+  P.negro(P.rect(614, 510, 36, 640), p, { color: AZUL, dir: 'y' });
+  // cámara de aire
+  P.rayar(P.rect(466, 510, 148, 640), 0.9, 26, { prog: p, ancho: 1.2, semilla: 53 });
+  // afuera frío / adentro tibio
+  copo(240, 640, 48, e(k(t, M.doble + 0.3, 0.5)));
+  ctx.save(); ctx.globalAlpha = k(t, M.doble + 0.5, 0.4); ctx.font = '800 42px "DM Sans"'; ctx.textAlign = 'center'; ctx.fillStyle = TINTA; ctx.fillText('afuera', 240, 760);
+  ctx.fillStyle = AZUL; ctx.fillText('adentro', 860, 760); ctx.restore();
+  const tib = e(k(t, M.tibio, 0.6));
+  for (let i = 0; i < 3; i++) { const x = 800 + i * 50; if (tib <= 0) continue; ctx.save(); ctx.strokeStyle = AZUL; ctx.lineWidth = 4; ctx.globalAlpha = tib; ctx.beginPath();
+    for (let j = 0; j <= 30; j++) { const y = 900 - j * 6, xx = x + Math.sin(j / 4 + t * 4 + i) * 8; j ? ctx.lineTo(xx, y) : ctx.moveTo(xx, y); } ctx.stroke(); ctx.restore(); }
+  pildora(540, 1400, 'Doble vidrio (DVH)', k(t, M.doble + 0.2, 0.4));
+  pildora(860, 1000, 'seco', k(t, M.casiNo + 0.2, 0.4), false);
+  ctx.restore();
+  if (t < M.tibio) titular(ctx, [['Si cambiás ventanas:', 0], ['doble vidrio', 1]], t, t0);
+  else titular(ctx, [['El de adentro', 0], ['queda tibio', 1]], t, M.tibio);
+}
+function tomaCierre(t) { // guardá + me gusta
+  const t0 = M.guarda;
+  ctx.save(); camara(t, t0, DUR, 0.04, 0);
+  P.ventana(270, 560, 540, 460, t0 - 1.0, t, { sem: 6 });
+  ctx.restore();
+  titular(ctx, [['Guardá', 1], ['este video', 0]], t, t0);
+  // marcador de "guardar"
+  const g = rebote(k(t, t0 + 0.3, 0.5));
+  if (g > 0) { ctx.save(); ctx.translate(380, 1140); ctx.scale(g, g); ctx.beginPath(); ctx.moveTo(-44, -60); ctx.lineTo(44, -60); ctx.lineTo(44, 60); ctx.lineTo(0, 30); ctx.lineTo(-44, 60); ctx.closePath(); ctx.lineWidth = 6; ctx.strokeStyle = TINTA; ctx.stroke(); ctx.restore(); }
+  // corazón de "me gusta" que se dibuja y se llena de azul
+  const hp = k(t, t0 + 0.9, 0.5), hf = e(k(t, t0 + 1.4, 0.35));
+  if (hp > 0) {
+    const s = 1 + 0.18 * Math.sin(Math.min(1, k(t, t0 + 1.4, 0.5)) * Math.PI);
+    ctx.save(); ctx.translate(700, 1130); ctx.scale(s, s);
+    const corazon = c => { c.moveTo(0, 50); c.bezierCurveTo(-90, -10, -60, -90, 0, -40); c.bezierCurveTo(60, -90, 90, -10, 0, 50); c.closePath(); };
+    if (hf > 0) P.negro(corazon, hf, { color: AZUL, dir: 'y' });
+    P.contorno(corazon, { prog: hp, ancho: 6, color: hf > 0 ? AZUL : TINTA });
+    ctx.restore();
+  }
+}
+
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0); P.fondo(); P.hervir(t);
+  const cortes = [0, M.cocinas, M.toca, M.vaso, M.solucion, M.cambias, M.guarda], idx = cortes.filter(c => t >= c).length - 1;
+  [tomaGotas, tomaVapor, tomaVidrio, tomaVaso, tomaVentilar, tomaDVH, tomaCierre][idx](t);
+  const fl = 1 - k(t, cortes[idx], 0.14);
+  if (idx > 0 && fl > 0) { ctx.fillStyle = `rgba(232,227,214,${fl * 0.8})`; ctx.fillRect(0, 0, W, H); }
+  marca(ctx);
+  dibujarSub(ctx, SUBS, t, ['ventana', 'gotas', 'aire', 'vapor', 'frío', 'agua', 'vaso', 'transpira', 'solución', 'ventilá', 'diez', 'doble', 'tibio', 'guardá', 'invierno']);
+}
+window.ready = init().then(() => document.fonts.load('800 96px "DM Sans"')).then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
+</script></body></html>

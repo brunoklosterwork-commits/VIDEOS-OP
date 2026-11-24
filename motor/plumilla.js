@@ -6,7 +6,8 @@ export const W = 1080, H = 1920;
 function rnd(s) { const x = Math.sin(s * 127.1) * 43758.5453; return x - Math.floor(x); }
 
 export function crear(ctx) {
-  const P = {};
+  // P.hervor: semilla que cambia cada ~3 cuadros -> el rayado tiembla apenas (receta line-boil, "cero cuadros quietos")
+  const P = { hervor: 0 };
   // rayado paralelo dentro de una forma; prog 0..1 lo va trazando (escalonado)
   P.rayar = (forma, ang, sep, { prog = 1, ancho = 2.2, color = TINTA, semilla = 1, curva = 0 } = {}) => {
     if (prog <= 0) return;
@@ -16,7 +17,7 @@ export function crear(ctx) {
     for (let i = 0; i < n; i++) {
       const p = Math.max(0, Math.min(1, prog * 1.6 - (i / n) * 0.6));
       if (p <= 0) continue;
-      const d = -1300 + i * sep + (rnd(i + semilla) - 0.5) * sep * 0.25;
+      const d = -1300 + i * sep + (rnd(i + semilla + P.hervor) - 0.5) * sep * 0.25;
       const cx = W / 2 - s * d, cy = H / 2 + c * d, x0 = cx - c * L / 2, y0 = cy - s * L / 2;
       ctx.beginPath(); ctx.moveTo(x0, y0);
       if (curva) ctx.quadraticCurveTo(cx + s * curva, cy - c * curva, x0 + c * L * p, y0 + s * L * p);
@@ -47,6 +48,7 @@ export function crear(ctx) {
   P.rect = (x, y, w, h) => c => c.rect(x, y, w, h);
   P.circ = (x, y, r) => c => c.arc(x, y, Math.max(0.01, r), 0, Math.PI * 2);
   P.anillo = (x, y, r1, r2) => c => { c.arc(x, y, r2, 0, Math.PI * 2); c.moveTo(x + r1, y); c.arc(x, y, r1, 0, Math.PI * 2, true); };
+  P.hervir = (t) => { P.hervor = Math.floor(t * 10) * 13; };
   P.fondo = () => { ctx.fillStyle = PAPEL; ctx.fillRect(0, 0, W, H); };
 
   // Ventana corrediza de aluminio con alero y vano en negro. o.prog: dibujo, o.abre: px que se corre la hoja.

@@ -19,3 +19,6 @@ Mixkit SFX Free License (uso comercial libre). Solo se copiaron los que tienen o
 | hit-weak.mp3 | Weak hit impact | https://assets.mixkit.co/active_storage/sfx/2148/2148-preview.mp3 |
 | bass-hit-short.mp3 | Short bass hit | https://assets.mixkit.co/active_storage/sfx/2299/2299-preview.mp3 |
 | lock-quick.mp3 | Quick lock sound | https://assets.mixkit.co/active_storage/sfx/2854/2854-preview.mp3 |
+| water-drop-cave.mp3 | Water drop splashes in cave | https://assets.mixkit.co/active_storage/sfx/3179/3179-preview.mp3 |
+| liquid-bubble.mp3 | Liquid bubble | https://assets.mixkit.co/active_storage/sfx/3000/3000-preview.mp3 |
+| water-bubble.mp3 | Water bubble | https://assets.mixkit.co/active_storage/sfx/1317/1317-preview.mp3 |
