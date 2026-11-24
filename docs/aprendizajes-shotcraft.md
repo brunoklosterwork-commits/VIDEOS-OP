@@ -58,8 +58,17 @@ El código de referencia de cada receta está en la skill (`demos/`), en Remotio
 
 Copiamos a `sonidos/` 15 efectos con licencia libre verificada (Mixkit): lápiz, lapicera, marcador, hojas de papel, roces, clics de interruptor, un destello suave y golpes. Se cargan con `archivo('sonidos/…')` en `sfx.py`. Desde el video 07, los rasguidos y clics sintéticos se reemplazan por estos.
 
-## 5. Lo que no usamos (por ahora)
+## 5. Cómo usar Remotion si una receta lo pide (notas de la demo, 24/11)
 
-- **Remotion y sus componentes:** acá no se pueden instalar paquetes y nuestro motor ya hace lo necesario.
+Resumen completo de la demo en `docs/demo-shotcraft-resumen.md`. Desde el 24/11 el entorno puede instalar paquetes (probado: Remotion 4.0.546 instala en ~25 s).
+- La plantilla Ink Press renderizó completa: 36 s, 1085 cuadros, ~3 min con 2 núcleos.
+- **Antes de renderizar:** revisar núcleos (`nproc`) y usar `--concurrency` = núcleos (con 4 falla si hay 2).
+- **Chrome:** Remotion no puede bajar su Chrome (`remotion.media` bloqueado). Usar el local:
+  `--browser-executable=/opt/pw-browsers/chromium_headless_shell-1243/chrome-headless-shell-linux64/chrome-headless-shell`
+- **Cuándo usarlo en OP:** solo si una receta es muy compleja de pasar a nuestro motor. Para la plumilla, nuestro motor es más rápido (~1 min por video) y ya tiene todo el estilo.
+- **Material para una toma con receta:** qué mostrar, el nombre de la receta (de la galería https://vincentwei1021.github.io/video-shotcraft/library.html), fotos o capturas propias y el logo en PNG/SVG. Nunca datos reales de clientes.
+
+## 6. Lo que no usamos (por ahora)
+
 - **Música con cortes al ritmo:** no usamos música de fondo. Si algún día la sumamos, la skill tiene el método para cortar en el pulso.
 - **Recetas de interfaz de software** (dashboards, buscadores): son para promos de apps, no para OP.
