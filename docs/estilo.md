@@ -43,3 +43,6 @@ Prueba de referencia: `estilo/prueba-plumilla-2/`.
 - Contornos limpios en la abertura (marco 6 px, hojas 5 px, contramarco 2 px); vidrio casi vacío, 2–3 reflejos.
 - **Animación**: las líneas se trazan solas en orden; los negros se pintan con un barrido; después actúa la abertura (hojas que se corren, etc.) y aparece el acento azul.
 - Render ~2 s por segundo de video.
+
+## Logo (nuevo, 24/11/2026)
+`marca/logo-op-nuevo.png` (PNG sin fondo, negro): isotipo de círculos concéntricos con punto central + "OP Sistemas". Sobre fondos oscuros o de color se usa en blanco (se tiñe en el render). El `marca/logo.png` anterior es solo el isotipo viejo: no usar.

@@ -13,7 +13,7 @@ const ease = x => x * x * (3 - 2 * x), out = x => 1 - Math.pow(1 - x, 3);
 const rebote = x => x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.cos(x * Math.PI * 2.5) * Math.exp(-x * 5.5);
 function rnd(s) { const x = Math.sin(s * 91.7) * 43758.5453; return x - Math.floor(x); }
 const img = new Image(); img.src = 'corrediza.png';
-const logo = new Image(); logo.src = '../../marca/logo.png';
+const logo = new Image(); logo.src = '../../marca/logo-op-nuevo.png';
 let logoB = null; // logo en blanco para el fondo azul
 function blanquear() { const c = document.createElement('canvas'); c.width = logo.width; c.height = logo.height; const g = c.getContext('2d');
   g.drawImage(logo, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); logoB = c; }
@@ -103,7 +103,8 @@ function draw(t) {
   const s = subs.find(([a, b]) => t >= a && t < b);
   if (s) texto(s[2], 540, 1300, 66, BLANCO, { alinear: 'center', esc: 0.92 + 0.08 * out(k(t, s[0], 0.12)) });
   // logo OP
-  if (logoB) { ctx.drawImage(logoB, W - 250, 70, 100, 100); ctx.font = '800 112px "DM Sans"'; ctx.fillStyle = BLANCO; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText('P', W - 150, 124); }
+  // logo nuevo (isotipo + "OP Sistemas"), recortado y en blanco
+  if (logoB) ctx.drawImage(logoB, 281, 237, 519, 584, W - 205, 48, 145, 163);
 }
 window.ready = Promise.all([img.decode(), logo.decode().then(blanquear), document.fonts.load('800 120px "DM Sans"')]).then(() => document.fonts.ready);
 window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
