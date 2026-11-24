@@ -110,3 +110,14 @@ def chime():
     a = bell([1318, 2637, 3951], 1.0, 0.25); b = bell([1760, 3520, 5274], 1.0, 0.3)
     o = int(0.09 * SR); out = np.zeros(o + len(b)); out[:len(a)] += a * 0.7; out[o:] += b
     return out / np.abs(out).max()
+
+
+def archivo(ruta, recorte=None):
+    """Carga un SFX real (mp3/wav) como array mono al SR del motor. recorte = segundos máximos."""
+    import subprocess
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-i', ruta, '-f', 'f32le', '-ac', '1', '-ar', str(SR), '-'],
+                         capture_output=True, check=True).stdout
+    s = np.frombuffer(raw, dtype=np.float32).copy()
+    if recorte: s = s[:int(recorte * SR)]
+    if len(s) > 400: s[-400:] *= np.linspace(1, 0, 400)  # sin clic al cortar
+    return s / (np.abs(s).max() + 1e-9)
