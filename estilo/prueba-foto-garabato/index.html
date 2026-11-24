@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block;width:1080px;height:1920px}</style>
+</head><body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+// Prueba de estilo "foto real + garabato": render real de OP como sticker, sobre azul fuerte,
+// con dibujos de marcador encima, tipografía gigante y golpes de zoom.
+const W = 1080, H = 1920, cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const AZUL = '#1f4fd8', AZUL_OSC = '#163a9e', AMARILLO = '#ffd23f', TINTA = '#141414', BLANCO = '#ffffff';
+const clamp = x => Math.max(0, Math.min(1, x)), k = (t, a, d) => clamp((t - a) / d);
+const ease = x => x * x * (3 - 2 * x), out = x => 1 - Math.pow(1 - x, 3);
+const rebote = x => x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.cos(x * Math.PI * 2.5) * Math.exp(-x * 5.5);
+function rnd(s) { const x = Math.sin(s * 91.7) * 43758.5453; return x - Math.floor(x); }
+const img = new Image(); img.src = 'corrediza.png';
+const logo = new Image(); logo.src = '../../marca/logo.png';
+let logoB = null; // logo en blanco para el fondo azul
+function blanquear() { const c = document.createElement('canvas'); c.width = logo.width; c.height = logo.height; const g = c.getContext('2d');
+  g.drawImage(logo, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); logoB = c; }
+
+// trazo de marcador: polilínea con temblor fijo, grosor con leve variación, se revela con prog
+function marcador(pts, prog, { color = AMARILLO, ancho = 14, sem = 1 } = {}) {
+  if (prog <= 0) return;
+  const n = pts.length - 1, hasta = n * prog;
+  ctx.save(); ctx.strokeStyle = color; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  for (let i = 0; i < hasta; i++) {
+    const a = pts[i], b = pts[i + 1], f = Math.min(1, hasta - i);
+    ctx.lineWidth = ancho * (0.85 + 0.3 * rnd(i + sem));
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f); ctx.stroke();
+  }
+  ctx.restore();
+}
+// círculo garabateado (más de una vuelta, como hecho a mano)
+function circuloMano(cx, cy, rx, ry, vueltas = 1.25, sem = 3) {
+  const p = []; for (let i = 0; i <= 80; i++) { const a = -1.2 + i / 80 * Math.PI * 2 * vueltas, j = 1 + (rnd(i * 0.3 + sem) - 0.5) * 0.06; p.push([cx + Math.cos(a) * rx * j, cy + Math.sin(a) * ry * j]); }
+  return p;
+}
+// gota dibujada a marcador (contorno + relleno)
+function gotaMano(x, y, r, p, color = AZUL) {
+  if (p <= 0) return;
+  const s = rebote(p);
+  ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+  ctx.beginPath(); ctx.moveTo(0, -r * 1.6); ctx.bezierCurveTo(r * 0.9, -r * 0.4, r, r * 0.4, 0, r); ctx.bezierCurveTo(-r, r * 0.4, -r * 0.9, -r * 0.4, 0, -r * 1.6);
+  ctx.fillStyle = color; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = TINTA; ctx.stroke();
+  ctx.fillStyle = BLANCO; ctx.beginPath(); ctx.ellipse(-r * 0.3, -r * 0.1, r * 0.18, r * 0.3, -0.3, 0, 7); ctx.fill();
+  ctx.restore();
+}
+// texto con sombra dura (estilo sticker)
+function texto(t, x, y, tam, color, { sombra = TINTA, peso = 800, alinear = 'left', rot = 0, esc = 1 } = {}) {
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.scale(esc, esc);
+  ctx.font = `${peso} ${tam}px "DM Sans"`; ctx.textAlign = alinear; ctx.textBaseline = 'alphabetic';
+  if (sombra) { ctx.fillStyle = sombra; ctx.fillText(t, 7, 7); }
+  ctx.fillStyle = color; ctx.fillText(t, 0, 0); ctx.restore();
+}
+
+function draw(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const z = 1 + 0.16 * out(k(t, 3.2, 0.35)); // golpe de zoom (solo el sticker)
+  // fondo azul fuerte con trama de puntos sutil
+  ctx.fillStyle = AZUL; ctx.fillRect(-200, -200, W + 400, H + 400);
+  ctx.fillStyle = AZUL_OSC;
+  for (let y = 0; y < H; y += 36) for (let x = (y / 36 % 2) * 18; x < W; x += 36) { ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill(); }
+
+  // sticker: el render real entra de golpe, girado, y rebota
+  const e1 = rebote(k(t, 0.0, 0.7));
+  const cx = 540, cy = 830, sw = 640, sh = 700;
+  ctx.save(); ctx.translate(cx, cy + (1 - e1) * 900); ctx.rotate(-0.05 + (1 - e1) * 0.4); ctx.scale(z * 0.82, z * 0.82);
+  ctx.fillStyle = TINTA; ctx.fillRect(-sw / 2 + 14, -sh / 2 + 16, sw, sh);           // sombra dura
+  ctx.fillStyle = BLANCO; ctx.fillRect(-sw / 2, -sh / 2, sw, sh);                      // borde de sticker
+  // recorte del render (zona de la ventana) dentro del sticker
+  const sx = 215, sy = 110, sW = 680, sH = 820, dw = sw - 60, dh = dw * sH / sW;
+  ctx.drawImage(img, sx, sy, sW, sH, -dw / 2, -sh / 2 + 30, dw, Math.min(dh, sh - 60));
+  // gotas sobre los dos vidrios (coordenadas del sticker)
+  const gotas = [[-210, -230, 22], [-120, -90, 16], [-250, 40, 18], [-150, 190, 24], [-60, 300, 14], [90, -260, 18], [200, -130, 24], [130, 20, 14], [240, 150, 20], [110, 260, 26], [-200, 330, 12], [20, -340, 12]];
+  gotas.forEach(([x, y, r], i) => gotaMano(x, y, r, k(t, 1.6 + i * 0.09, 0.3)));
+  // chorreadas a marcador
+  [[-150, 214, 120], [110, 286, 90], [200, -106, 110]].forEach(([x, y, L], i) => marcador([[x, y], [x + 3, y + L * 0.5], [x - 2, y + L]], k(t, 2.4 + i * 0.15, 0.5), { color: AZUL, ancho: 8, sem: i }));
+  ctx.restore();
+
+  // círculo de marcador amarillo alrededor de la ventana
+  marcador(circuloMano(cx, cy, 360 * z, 400 * z), ease(k(t, 2.2, 0.7)), { ancho: 16 });
+
+  // título gigante: palabra por palabra con rebote
+  const w1 = rebote(k(t, 0.45, 0.5)), w2 = rebote(k(t, 0.75, 0.5)), w3 = rebote(k(t, 1.05, 0.55));
+  if (w1 > 0) texto('¿TU', 70, 250, 120, BLANCO, { esc: w1 });
+  if (w2 > 0) texto('VENTANA', 300, 250, 120, BLANCO, { esc: w2 });
+  if (w3 > 0) {
+    // resaltador amarillo detrás de "LLORA?"
+    const h = ease(k(t, 1.25, 0.35));
+    ctx.save(); ctx.fillStyle = AMARILLO; ctx.translate(60, 300); ctx.rotate(-0.025); ctx.fillRect(0, 0, 640 * h, 150); ctx.restore();
+    texto('LLORA?', 80, 420, 150, TINTA, { sombra: null, esc: w3, peso: 800 });
+  }
+  // sello "NO ESTÁ ROTA"
+  const st = rebote(k(t, 3.7, 0.4));
+  if (st > 0) {
+    ctx.save(); ctx.translate(780, 1185); ctx.rotate(-0.18); ctx.scale(st * 1.0, st * 1.0);
+    ctx.strokeStyle = AMARILLO; ctx.lineWidth = 10; ctx.strokeRect(-230, -70, 460, 140);
+    ctx.font = '800 66px "DM Sans"'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillStyle = AMARILLO; ctx.fillText('NO ESTÁ ROTA', 0, 4);
+    ctx.restore();
+  }
+  // subtítulo (tercio inferior), blanco con sombra dura
+  const subs = [[0.0, 0.9, 'tu ventana amanece'], [0.9, 2.2, 'llena de gotas'], [2.5, 4.1, 'no se está rompiendo']];
+  const s = subs.find(([a, b]) => t >= a && t < b);
+  if (s) texto(s[2], 540, 1300, 66, BLANCO, { alinear: 'center', esc: 0.92 + 0.08 * out(k(t, s[0], 0.12)) });
+  // logo OP
+  if (logoB) { ctx.drawImage(logoB, W - 250, 70, 100, 100); ctx.font = '800 112px "DM Sans"'; ctx.fillStyle = BLANCO; ctx.textBaseline = 'middle'; ctx.textAlign = 'left'; ctx.fillText('P', W - 150, 124); }
+}
+window.ready = Promise.all([img.decode(), logo.decode().then(blanquear), document.fonts.load('800 120px "DM Sans"')]).then(() => document.fonts.ready);
+window.frameJPEG = t => { draw(t); return cv.toDataURL('image/jpeg', 0.92); };
+</script></body></html>
