@@ -15,3 +15,9 @@ La voz en off le habla a una sola persona, como en una charla de mostrador o un 
 
 ## Duración
 - Objetivo: menos de 30 s. Con voces pausadas de ElevenLabs, ~65–70 palabras.
+
+## Gancho + build-up (de Lo Habías Oído)
+- 0–3 s: afirmación que parece imposible o pregunta sobre algo que te pasó.
+- 3–10 s: por qué quedarte (promesa o misterio que se cierra al final).
+- Filtro: todos lo vivieron · pregunta < 10 palabras · giro en la 2.ª frase · se puede dibujar · tiene analogía cotidiana.
+- Texto del post: máximo 5 hashtags, siempre #opsistemas.
